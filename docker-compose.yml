@@ -1,0 +1,36 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DATABASE_USERNAME:-portofolio}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-portofolio}
+      POSTGRES_DB: ${DATABASE_NAME:-portofolio}
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USERNAME:-portofolio}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://${DATABASE_USERNAME:-portofolio}:${DATABASE_PASSWORD:-portofolio}@db:5432/${DATABASE_NAME:-portofolio}
+      DIRECT_URL: postgres://${DATABASE_USERNAME:-portofolio}:${DATABASE_PASSWORD:-portofolio}@db:5432/${DATABASE_NAME:-portofolio}
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db_data:

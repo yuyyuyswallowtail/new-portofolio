@@ -1,0 +1,83 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+:root {
+  --bg: #F7F8FA;
+  --surface: #FFFFFF;
+  --ink: #131720;
+  --ink-muted: #5B6472;
+  --line: #E3E6EA;
+  --accent: #2FAF95;
+  --accent-strong: #248F79;
+  --warn: #B8791F;
+  --danger: #C23B45;
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+:root:not([data-theme="light"]) {
+  --bg: #0E1116;
+  --surface: #151A21;
+  --ink: #E7EBF0;
+  --ink-muted: #8B95A3;
+  --line: #232A34;
+  --accent: #4FD1B5;
+  --accent-strong: #2FAF95;
+  --warn: #E0A741;
+  --danger: #E0616B;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #F7F8FA;
+    --surface: #FFFFFF;
+    --ink: #131720;
+    --ink-muted: #5B6472;
+    --line: #E3E6EA;
+    --accent: #2FAF95;
+    --accent-strong: #248F79;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-warn: var(--warn);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-sans);
+  --font-data: var(--font-data);
+}
+
+html, body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+}
+
+* {
+  border-color: var(--line);
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.font-data {
+  font-family: var(--font-data);
+  letter-spacing: -0.01em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
