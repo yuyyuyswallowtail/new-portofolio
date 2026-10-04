@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-portofolio}
       POSTGRES_DB: ${DATABASE_NAME:-portofolio}
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:
@@ -28,9 +28,24 @@ services:
       DIRECT_URL: postgres://${DATABASE_USERNAME:-portofolio}:${DATABASE_PASSWORD:-portofolio}@db:5432/${DATABASE_NAME:-portofolio}
     ports:
       - "3000:3000"
+    volumes:
+      - uploads_data:/app/public/uploads
     depends_on:
       db:
         condition: service_healthy
 
+  cron:
+    image: alpine:3.20
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./cron/entrypoint.sh:/entrypoint.sh:ro
+    entrypoint: ["sh", "/entrypoint.sh"]
+    depends_on:
+      app:
+        condition: service_started
+
 volumes:
   db_data:
+  uploads_data:

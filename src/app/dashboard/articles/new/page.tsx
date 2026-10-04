@@ -1,3 +1,4 @@
+import { getAiModelInfo } from "@/lib/ai-models";
 import { NewArticleForm } from "./form";
 
 export default async function NewArticlePage({
@@ -6,12 +7,17 @@ export default async function NewArticlePage({
   searchParams: Promise<{ ai?: string }>;
 }) {
   const { ai } = await searchParams;
+  const { textModel, imageModel } = getAiModelInfo();
   return (
     <div className="max-w-2xl">
       <h1 className="text-2xl font-semibold">
         {ai ? "Generate article with AI" : "Write article"}
       </h1>
-      <NewArticleForm mode={ai ? "ai" : "manual"} />
+      <NewArticleForm
+        mode={ai ? "ai" : "manual"}
+        textModel={textModel}
+        imageModel={imageModel}
+      />
     </div>
   );
 }

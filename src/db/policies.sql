@@ -131,8 +131,29 @@ CREATE POLICY articles_delete ON articles
     OR (app_current_role() = 'editor' AND author_id = app_current_user_id() AND status = 'draft')
   );
 
+-- comments: anyone can read/insert (public comment form, rate-limited at the
+-- app layer in modules/comments/service.ts); only staff can delete.
+DROP POLICY IF EXISTS comments_read_public ON comments;
+CREATE POLICY comments_read_public ON comments
+  FOR SELECT USING (deleted_at IS NULL OR app_is_staff());
+DROP POLICY IF EXISTS comments_insert_public ON comments;
+CREATE POLICY comments_insert_public ON comments
+  FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS comments_delete_staff ON comments;
+CREATE POLICY comments_delete_staff ON comments
+  FOR DELETE USING (app_is_staff());
+
 -- sessions: a user (or staff) can only see/delete their own session rows.
 DROP POLICY IF EXISTS sessions_owner ON sessions;
 CREATE POLICY sessions_owner ON sessions
   FOR ALL USING (app_is_staff() OR user_id = app_current_user_id())
   WITH CHECK (app_is_staff() OR user_id = app_current_user_id());
+
+-- comments moderation: public hanya melihat komentar approved; staff boleh
+-- melihat semua dan mengubah status (override definisi comments_read_public di atas).
+DROP POLICY IF EXISTS comments_read_public ON comments;
+CREATE POLICY comments_read_public ON comments
+  FOR SELECT USING ((status = 'approved' AND deleted_at IS NULL) OR app_is_staff());
+DROP POLICY IF EXISTS comments_update_staff ON comments;
+CREATE POLICY comments_update_staff ON comments
+  FOR UPDATE USING (app_is_staff()) WITH CHECK (app_is_staff());

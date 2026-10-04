@@ -1,9 +1,13 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
+import { AnalyticsBar } from "@/components/dashboard/analytics-bar";
+import { Sidebar } from "@/components/dashboard/sidebar";
+import { ThemeToggle } from "@/components/site/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { isStaff } from "@/lib/rbac";
 import { getCurrentUser } from "@/lib/session";
+import { getDashboardAnalytics } from "@/modules/analytics/service";
 import { logoutAction } from "@/modules/auth/actions";
+import { pendingCount as pendingCommentCount } from "@/modules/comments/service";
 
 export default async function DashboardLayout({
   children,
@@ -15,33 +19,21 @@ export default async function DashboardLayout({
   // Role-aware nav per ARCHITECTURE.md §4 step 3 — viewer role has no dashboard use case yet (PRD.md §4).
   if (!isStaff(user.role) && user.role !== "editor") redirect("/");
 
+  const [analytics, pendingComments] = await Promise.all([
+    getDashboardAnalytics(),
+    isStaff(user.role) ? pendingCommentCount() : Promise.resolve(0),
+  ]);
+
   return (
-    <div className="min-h-screen">
-      <header className="border-b border-line">
-        <nav className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-6">
-            <Link href="/dashboard" className="font-data text-sm text-accent">
-              ~/dashboard
-            </Link>
-            <Link
-              href="/dashboard/articles"
-              className="text-sm text-ink hover:text-accent"
-            >
-              Articles
-            </Link>
-            {isStaff(user.role) && (
-              <Link
-                href="/dashboard/users"
-                className="text-sm text-ink hover:text-accent"
-              >
-                Users
-              </Link>
-            )}
-          </div>
+    <div className="flex min-h-screen">
+      <Sidebar isStaff={isStaff(user.role)} pendingComments={pendingComments} />
+      <div className="flex-1">
+        <header className="flex items-center justify-between border-b border-line px-6 py-4">
+          <span className="font-data text-xs text-ink-muted">
+            {user.email} · {user.role}
+          </span>
           <div className="flex items-center gap-4">
-            <span className="font-data text-xs text-ink-muted">
-              {user.email} · {user.role}
-            </span>
+            <ThemeToggle />
             <form
               action={async () => {
                 "use server";
@@ -53,9 +45,13 @@ export default async function DashboardLayout({
               </Button>
             </form>
           </div>
-        </nav>
-      </header>
-      <main className="mx-auto max-w-6xl px-6 py-10">{children}</main>
+        </header>
+        <main className="px-6 py-8">
+          {/* Required on every admin page — not just /dashboard home */}
+          <AnalyticsBar data={analytics} />
+          {children}
+        </main>
+      </div>
     </div>
   );
 }
