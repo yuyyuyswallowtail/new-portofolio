@@ -5,6 +5,7 @@ export type Action =
   | "articles.create"
   | "articles.publish"
   | "articles.manage_any" // edit/delete any article regardless of author
+  | "comments.moderate"
   | "users.manage";
 
 const RULES: Record<Role, Action[]> = {
@@ -13,6 +14,7 @@ const RULES: Record<Role, Action[]> = {
     "articles.create",
     "articles.publish",
     "articles.manage_any",
+    "comments.moderate",
     "users.manage",
   ],
   admin: [
@@ -20,6 +22,7 @@ const RULES: Record<Role, Action[]> = {
     "articles.create",
     "articles.publish",
     "articles.manage_any",
+    "comments.moderate",
   ],
   editor: ["articles.create"],
   viewer: [],

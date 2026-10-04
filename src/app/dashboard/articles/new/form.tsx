@@ -5,13 +5,18 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  createArticleAction,
-  generateArticleAction,
-} from "@/modules/articles/actions";
+import { generateArticleAction } from "@/modules/articles/actions";
+import { ArticleEditorForm } from "../editor-form";
 
-export function NewArticleForm({ mode }: { mode: "ai" | "manual" }) {
+export function NewArticleForm({
+  mode,
+  textModel,
+  imageModel,
+}: {
+  mode: "ai" | "manual";
+  textModel: string;
+  imageModel: string;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -19,18 +24,15 @@ export function NewArticleForm({ mode }: { mode: "ai" | "manual" }) {
   const [topic, setTopic] = useState("");
   const [withImage, setWithImage] = useState(true);
 
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [tags, setTags] = useState("");
-
   if (mode === "ai") {
     return (
-      <div className="mt-6 space-y-4">
+      <div className="mt-6 max-w-xl space-y-4">
         <p className="text-sm text-ink-muted">
-          Menulis artikel otomatis (AI/web dev/networking) pakai Gemini 2.5
-          Flash, plus cover image dari Gemini 2.5 Flash Image ("Nano Banana")
-          kalau dicentang. Hasilnya selalu jadi{" "}
-          <span className="font-data">draft</span> — kamu yang publish manual.
+          Menulis artikel otomatis (AI/web dev/networking) pakai{" "}
+          <span className="font-data">{textModel}</span>, plus cover image dari{" "}
+          <span className="font-data">{imageModel}</span> kalau dicentang.
+          Hasilnya selalu jadi <span className="font-data">draft</span> — kamu
+          akan diarahkan ke editor buat review/edit sebelum publish.
         </p>
         <div>
           <Label htmlFor="topic">
@@ -50,7 +52,7 @@ export function NewArticleForm({ mode }: { mode: "ai" | "manual" }) {
             checked={withImage}
             onChange={(e) => setWithImage(e.target.checked)}
           />
-          Generate cover image (Nano Banana)
+          Generate cover image ({imageModel})
         </label>
         {error && <p className="text-sm text-danger">{error}</p>}
         <Button
@@ -66,7 +68,7 @@ export function NewArticleForm({ mode }: { mode: "ai" | "manual" }) {
                 setError(res.error);
                 return;
               }
-              router.push("/dashboard/articles");
+              router.push(`/dashboard/articles/${res.data.id}/edit`);
             })
           }
         >
@@ -77,59 +79,17 @@ export function NewArticleForm({ mode }: { mode: "ai" | "manual" }) {
   }
 
   return (
-    <div className="mt-6 space-y-4">
-      <div>
-        <Label htmlFor="title">Title</Label>
-        <Input
-          id="title"
-          className="mt-1"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
-      </div>
-      <div>
-        <Label htmlFor="tags">Tags (pisah koma)</Label>
-        <Input
-          id="tags"
-          className="mt-1"
-          value={tags}
-          onChange={(e) => setTags(e.target.value)}
-        />
-      </div>
-      <div>
-        <Label htmlFor="content">Content (Markdown)</Label>
-        <Textarea
-          id="content"
-          rows={16}
-          className="mt-1 font-data"
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-        />
-      </div>
-      {error && <p className="text-sm text-danger">{error}</p>}
-      <Button
-        disabled={pending}
-        onClick={() =>
-          startTransition(async () => {
-            setError(null);
-            const res = await createArticleAction({
-              title,
-              contentMd: content,
-              tags: tags
-                .split(",")
-                .map((t) => t.trim())
-                .filter(Boolean),
-            });
-            if (!res.ok) {
-              setError(res.error);
-              return;
-            }
-            router.push("/dashboard/articles");
-          })
-        }
-      >
-        {pending ? "Saving..." : "Save as draft"}
-      </Button>
+    <div className="mt-6">
+      <ArticleEditorForm
+        mode="create"
+        initial={{
+          title: "",
+          excerpt: "",
+          contentMd: "",
+          tags: [],
+          coverImageUrl: undefined,
+        }}
+      />
     </div>
   );
 }

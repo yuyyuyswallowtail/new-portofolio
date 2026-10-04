@@ -7,6 +7,8 @@ import type { Role } from "@/lib/rbac";
 
 const COOKIE_NAME = process.env.SESSION_COOKIE_NAME || "portofolio_session";
 const TTL_DAYS = Number(process.env.SESSION_TTL_DAYS || 7);
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export type SessionUser = {
   id: string;
@@ -36,7 +38,10 @@ export async function createSession(userId: string) {
 export async function getCurrentUser(): Promise<SessionUser | null> {
   const store = await cookies();
   const sessionId = store.get(COOKIE_NAME)?.value;
-  if (!sessionId) return null;
+  // A malformed/stale/tampered cookie (not a valid UUID) means "not logged
+  // in" — it must never surface as a 500 (this crashed every page before:
+  // Postgres throws on `invalid input syntax for type uuid`).
+  if (!sessionId || !UUID_RE.test(sessionId)) return null;
 
   const rows = await db
     .select({
@@ -44,6 +49,7 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
       email: users.email,
       name: users.name,
       role: users.role,
+      isActive: users.isActive,
       expiresAt: sessions.expiresAt,
     })
     .from(sessions)
@@ -53,7 +59,7 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
 
   const row = rows[0];
   if (!row) return null;
-  if (row.expiresAt.getTime() < Date.now()) {
+  if (row.expiresAt.getTime() < Date.now() || !row.isActive) {
     await destroySession();
     return null;
   }
@@ -68,7 +74,7 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
 export async function destroySession() {
   const store = await cookies();
   const sessionId = store.get(COOKIE_NAME)?.value;
-  if (sessionId) {
+  if (sessionId && UUID_RE.test(sessionId)) {
     await db.delete(sessions).where(eq(sessions.id, sessionId));
   }
   store.delete(COOKIE_NAME);

@@ -1,10 +1,12 @@
+import { MotionConfig } from "framer-motion";
 import type { Metadata } from "next";
+import { ThemeScript } from "@/components/site/theme-script";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Yuyyuy — Backend & Local-Inference Engineer",
+  title: "Bintang Mesir — Software Engineer",
   description:
-    "Portfolio and technical writing on AI infrastructure, web development, and networking.",
+    "Software Engineer & Full Stack Web Developer — React, Next.js, Express, Laravel, Golang Fiber. Portfolio and technical writing on AI, web development, and networking.",
 };
 
 export default function RootLayout({
@@ -15,6 +17,7 @@ export default function RootLayout({
   return (
     <html lang="id" suppressHydrationWarning>
       <head>
+        <ThemeScript />
         {/*
           Loaded via a plain <link>, not next/font/google, so the Docker build
           never needs network access to fonts.googleapis.com — it only matters
@@ -28,11 +31,16 @@ export default function RootLayout({
           crossOrigin="anonymous"
         />
         <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap"
           rel="stylesheet"
         />
       </head>
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        {/* reducedMotion="user" makes every Framer Motion animation in the app
+            automatically honor the OS/browser prefers-reduced-motion setting,
+            without each component having to check it individually. */}
+        <MotionConfig reducedMotion="user">{children}</MotionConfig>
+      </body>
     </html>
   );
 }

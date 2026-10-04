@@ -1,77 +1,75 @@
-# Portofolio
+# Bintang Mesir — Software Engineer & Web Developer
 
-Full-stack rebuild: portfolio (hero/about/education/experience/certifications/
-skills/projects/contact) + an AI-assisted articles module + RBAC dashboard.
-Runs entirely via Docker Compose (Next.js app + Postgres), no Supabase account
-required to get started locally.
+Lulusan S1 Teknik Informatika dari Universitas Muhammadiyah Jakarta, bersertifikat
+Kompetensi BNSP sebagai Software Engineer. Portfolio + blog dengan RBAC, admin
+dashboard lengkap (sidebar, analytics, WYSIWYG editor, AI article generation +
+regenerate, comments), dan auto-generate artikel terjadwal.
 
-## What's implemented in this scaffold
+📧 bintangmsr@gmail.com · 🔗 [linkedin.com/in/bintang-mesir](https://linkedin.com/in/bintang-mesir) · 🐙 [github.com/yuyyuyswallowtail](https://github.com/yuyyuyswallowtail)
 
-- Drizzle schema for all PRD.md §6 tables + `role` enum on `users`
-- Sessions (DB-backed, httpOnly cookie), argon2 password hashing
-- `lib/rbac.ts#can()` + RLS policies (`src/db/policies.sql`) — the 3-layer model from ARCHITECTURE.md §4
-- Public site: hero/about/education+experience timeline/certifications/skills/projects/contact
-- Articles: public list + detail (Markdown → sanitized HTML), dashboard list, manual editor,
-  **"Generate with AI" button** — Gemini 2.5 Flash writes the article (topic: AI / web dev /
-  networking), Gemini 2.5 Flash Image ("Nano Banana") generates a cover image. Always saved
-  as a draft — a human still has to hit Publish.
-- Design tokens from DESIGN_SYSTEM.md wired into `globals.css` + Tailwind v4 `@theme`
-- Minimal hand-rolled UI primitives (Button/Card/Badge/Input/Textarea/Label) in the same
-  visual language as shadcn — swap for real shadcn components anytime with `bunx shadcn add`
+---
 
-## What's intentionally left for you to extend
+## Stack
 
-- GitHub repo sync for Projects (source: "manual" works now; "github" sync job is not wired)
-- File uploads for certification images / CV (currently plain `imageUrl`/`cvUrl` text fields —
-  point them at any URL for now; Supabase Storage wiring is a follow-up per PRD.md open questions)
-- Dashboard CRUD screens for education/experience/certifications/skills/projects (repository
-  functions exist in `src/modules/content/`; only read-paths + the public page are wired.
-  Copy the pattern from `src/modules/articles/` to add the write-side dashboard forms)
-- `/dashboard/users` page (route exists in nav, page not yet built — user management is
-  `SUPER_ADMIN`-only per PRD.md §4 A10)
-- Automated tests (see CODE_STYLE.md §7 for the intended approach)
+Next.js 16 · Drizzle + Postgres (RLS) · Tiptap (WYSIWYG) · Three.js + Framer Motion ·
+Gemini 3.8 Flash + 3.1 Flash Image · Docker Compose (app + db + cron)
+
+## What's new in this round
+
+- **Contact folded into the global footer** (every page), no longer a separate
+  nav item/page. Staff login link lives in the footer too (small, not in main nav).
+- **Admin sidebar** (replacing the old top nav) — Overview/Articles/Profile/Users/System.
+- **WYSIWYG editor (Tiptap)** for articles — bold/italic/headings/lists/quote/code/link,
+  **multiple image uploads** inline in the content, plus a separate **cover/thumbnail**
+  upload field. Uploads go to `public/uploads/articles/` (persisted via the
+  `uploads_data` Docker volume).
+- **Article edit page** (`/dashboard/articles/[id]/edit`) — every article now has a
+  proper Edit flow, not just Publish/Delete. AI-generated articles also get a
+  **"Regenerate with AI"** button where you describe what to fix and Gemini rewrites
+  the draft in place.
+- AI-generated drafts now redirect straight to the edit page after generation, so
+  review/edit is the natural next step instead of an extra click.
+- **Comments** on published articles — public name+message form (honeypot +
+  rate-limited anti-spam), staff can delete from the article page itself.
+- Article content is now stored as **sanitized HTML** (Tiptap's native format) instead
+  of raw Markdown — AI-generated Markdown is converted once at save time. Proper
+  `@tailwindcss/typography` styling (`prose`) fixes paragraph spacing; article page is
+  now responsive on mobile (nav got a hamburger menu too — it had none before).
+- **Favicon** (`src/app/icon.svg`) — the old repo only had Next.js's default one.
+- Hero + Projects section visually elevated (bigger display type, image-forward
+  project cards) — still not a pixel-perfect clone of any reference site, but a clear
+  step up from the plain version.
+- **Bug fix:** a malformed/stale session cookie used to crash every page with a 500
+  (Postgres rejecting an invalid UUID). Now treated as "logged out", as it should be.
+- `seed:admin` defaults: `bintangmsr@gmail.com` / `20200410700101` (change
+  `ADMIN_PASSWORD` in `.env` before running in anything but local dev).
+- Profile page can now edit **email** too (uniqueness-checked).
 
 ## Quick start (Docker)
 
 ```bash
 cd portofolio
-cp .env.example .env          # .env with a placeholder GEMINI_API_KEY already exists — replace it
-docker compose up --build
-```
-
-On first boot the `app` container runs `drizzle-kit migrate` automatically (see
-`docker-entrypoint.sh`). Then, in another terminal, create the first admin account:
-
-```bash
+cp .env.example .env   # fill GEMINI_API_KEY, change CRON_SECRET + ADMIN_PASSWORD
+docker compose up --build -d
+docker compose exec -T db sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f -' < src/db/policies.sql
 docker compose exec app bun run seed:admin
+docker compose exec app bun run seed:content
 ```
 
-Open http://localhost:3000 (public site) and http://localhost:3000/login (staff).
-
-## Quick start (bare metal / no Docker)
-
-```bash
-bun install
-cp .env.example .env
-# start your own Postgres and point DATABASE_URL/DIRECT_URL at it, or:
-docker compose up db -d
-bun run db:generate
-bun run db:migrate
-psql "$DATABASE_URL" -f src/db/policies.sql   # apply RLS policies
-bun run seed:admin
-bun run dev
-```
-
-## The Gemini API key
-
-`.env` already has `GEMINI_API_KEY=` filled in with the placeholder value you gave me, in
-`src/lib/gemini.ts` is exactly where it's read (`process.env.GEMINI_API_KEY`). Get a real
-free-tier key at https://aistudio.google.com/app/apikey and replace it — the free tier has
-a daily request quota per model, so if "Generate with AI" errors out with a quota message,
-that's expected occasionally, not a bug.
+Open http://localhost:3000. Staff login is at `/login` (linked quietly from the
+footer, not the main nav — see `SECURITY.md`).
 
 ## Docs
 
-See `PRD.md`, `ARCHITECTURE.md`, `SECURITY.md`, `DESIGN_SYSTEM.md`, `CODE_STYLE.md`,
-`AGENTS.md` at the repo root — carried over from the planning phase, now living alongside
-the actual code they describe.
+`PRD.md`, `ARCHITECTURE.md`, `SECURITY.md`, `DESIGN_SYSTEM.md`, `CODE_STYLE.md`,
+`AGENTS.md` — still reflect an earlier state of the project (pre-dashboard,
+pre-auto-generate, pre-this-round). The code has moved faster than the docs across
+the last few rounds; happy to reconcile them in a dedicated pass if useful.
+
+## Still not done (said plainly, not buried)
+
+- GitHub repo auto-sync for Projects
+- Dashboard CRUD for education/experience/certifications/skills (data model +
+  repository exist in `src/modules/content/`, no write-side UI yet)
+- Comment moderation is delete-only (no pending/approve queue)
+- Automated tests

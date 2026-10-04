@@ -25,6 +25,12 @@ export const articleStatusEnum = pgEnum("article_status", [
   "draft",
   "published",
 ]);
+export const commentStatusEnum = pgEnum("comment_status", [
+  "pending",
+  "approved",
+  "rejected",
+  "spam",
+]);
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -33,6 +39,7 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   salt: text("salt").notNull(),
   role: roleEnum("role").notNull().default("viewer"),
+  isActive: boolean("is_active").notNull().default(true),
   birthday: date("birthday", { mode: "string" }),
   profileUrl: text("profile_url"),
   cvUrl: text("cv_url"),
@@ -172,6 +179,22 @@ export const articles = pgTable("articles", {
   deletedAt: timestamp("deleted_at"),
 }).enableRLS();
 
+export const comments = pgTable("comments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  articleId: uuid("article_id")
+    .notNull()
+    .references(() => articles.id, { onDelete: "cascade" }),
+  authorName: text("author_name").notNull(),
+  authorEmail: text("author_email"),
+  body: text("body").notNull(),
+  status: commentStatusEnum("status").notNull().default("approved"),
+  flagReason: text("flag_reason"),
+  moderatedAt: timestamp("moderated_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  deletedAt: timestamp("deleted_at"),
+}).enableRLS();
+
+export type Comment = typeof comments.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Article = typeof articles.$inferSelect;
