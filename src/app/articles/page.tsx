@@ -1,10 +1,7 @@
-import Link from "next/link";
 import { Pagination } from "@/components/dashboard/pagination";
-import { ArticleCover } from "@/components/site/article-cover";
+import { ArticleCard } from "@/components/site/article-card";
 import { SiteFooter } from "@/components/site/footer";
 import { SiteNav } from "@/components/site/nav";
-import { Badge } from "@/components/ui/badge";
-import { formatDate } from "@/lib/utils";
 import { listPublic } from "@/modules/articles/service";
 import { PublicFilterBar } from "./filter-bar";
 
@@ -28,9 +25,10 @@ export default async function ArticlesPage({
   return (
     <>
       <SiteNav />
-      <main className="mx-auto max-w-5xl px-6 py-16">
-        <h1 className="text-3xl font-semibold">Articles</h1>
-        <p className="mt-2 text-ink-muted">
+      <main className="mx-auto max-w-6xl px-6 py-14 md:py-20">
+        <p className="kicker">/ Writing</p>
+        <h1 className="display-lg mt-3">Articles</h1>
+        <p className="mt-4 max-w-xl text-lg text-ink-muted">
           Writing on AI, web development, and networking.
         </p>
 
@@ -38,29 +36,9 @@ export default async function ArticlesPage({
           <PublicFilterBar />
         </div>
 
-        <div className="space-y-8">
-          {items.map((a) => (
-            <Link
-              key={a.id}
-              href={`/articles/${a.slug}`}
-              className="flex flex-col gap-4 border-b border-line pb-8 hover:border-accent sm:flex-row sm:items-start sm:gap-6"
-            >
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-3 font-data text-xs text-ink-muted">
-                  <span>{formatDate(a.publishedAt)}</span>
-                  {a.aiGenerated && <Badge tone="accent">ai-generated</Badge>}
-                  {a.tags.map((t) => (
-                    <Badge key={t}>{t}</Badge>
-                  ))}
-                </div>
-                <h2 className="mt-2 text-xl font-medium">{a.title}</h2>
-                <p className="mt-1 text-ink-muted">{a.excerpt}</p>
-              </div>
-              <ArticleCover
-                src={a.coverImageUrl}
-                className="order-first w-full sm:order-none sm:w-56 sm:shrink-0"
-              />
-            </Link>
+        <div className="mt-10 grid grid-cols-1 gap-x-6 gap-y-14 md:grid-cols-2">
+          {items.map((a, i) => (
+            <ArticleCard key={a.id} a={a} index={i} />
           ))}
           {items.length === 0 && (
             <p className="text-sm text-ink-muted">

@@ -1,15 +1,23 @@
-import Image from "next/image";
 import Link from "next/link";
-import { ArticleCover } from "@/components/site/article-cover";
+import { Accordion } from "@/components/site/accordion";
+import { ArticleCard } from "@/components/site/article-card";
+import { blockClass } from "@/components/site/blocks";
+import { CertGallery } from "@/components/site/cert-gallery";
 import { SiteFooter } from "@/components/site/footer";
-import { HeroCanvas } from "@/components/site/hero-canvas";
+import { HeroSection } from "@/components/site/hero-section";
+import { Marquee } from "@/components/site/marquee";
+import {
+  ActiveOnScroll,
+  ClipReveal,
+  CountUp,
+  Stagger,
+  StaggerItem,
+} from "@/components/site/motion";
 import { SiteNav } from "@/components/site/nav";
 import { Reveal } from "@/components/site/reveal";
 import { SectionHeading } from "@/components/site/section-heading";
-import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { formatDate } from "@/lib/utils";
+import { StackSection } from "@/components/site/stack-section";
+import { cn, formatDate } from "@/lib/utils";
 import { listRecentForHome } from "@/modules/articles/service";
 import {
   getOwnerProfile,
@@ -21,6 +29,64 @@ import {
 } from "@/modules/content/repository";
 
 export const dynamic = "force-dynamic";
+
+type Project = Awaited<ReturnType<typeof listProjects>>[number];
+
+function ProjectCard({ p, i }: { p: Project; i: number }) {
+  const href = p.liveUrl || p.repoUrl || undefined;
+  const body = (
+    <>
+      <ClipReveal>
+        <div
+          className={cn(
+            "relative aspect-[4/3] overflow-hidden rounded-[28px] text-on-block",
+            blockClass(i),
+          )}
+        >
+          {p.imageUrl ? (
+            // biome-ignore lint/performance/noImgElement: gambar project bisa berupa upload lokal, optimasi next/image tidak penting di sini
+            <img
+              src={p.imageUrl}
+              alt={p.title}
+              loading="lazy"
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+            />
+          ) : (
+            <span className="absolute inset-0 grid place-items-center text-8xl font-extrabold tracking-tighter opacity-80">
+              {String(i + 1).padStart(2, "0")}
+            </span>
+          )}
+          {p.featured && (
+            <span className="font-data absolute left-4 top-4 rounded-full bg-bg px-3 py-1 text-xs text-ink">
+              featured
+            </span>
+          )}
+        </div>
+      </ClipReveal>
+      <div className="mt-4 flex items-start justify-between gap-4">
+        <h3 className="text-2xl font-semibold tracking-tight group-hover:underline">
+          {p.title}
+        </h3>
+        <span className="chip shrink-0 text-ink-muted">{p.source}</span>
+      </div>
+      {p.description && (
+        <p className="mt-2 line-clamp-2 text-ink-muted">{p.description}</p>
+      )}
+      <p className="font-data mt-3 text-xs text-accent-strong">
+        {p.repoUrl && "repo ↗  "}
+        {p.liveUrl && "live ↗"}
+      </p>
+    </>
+  );
+
+  return href ? (
+    <a href={href} target="_blank" rel="noreferrer" className="group block">
+      {body}
+    </a>
+  ) : (
+    <div className="group block">{body}</div>
+  );
+}
 
 export default async function HomePage() {
   const owner = await getOwnerProfile();
@@ -66,324 +132,299 @@ export default async function HomePage() {
     },
     {},
   );
+  const skillItems = Object.entries(skillsByCategory).map(
+    ([category, items]) => ({
+      id: category,
+      title: category,
+      count: items.length,
+      content: (
+        <div className="flex flex-wrap gap-2">
+          {items.map((s) => (
+            <span
+              key={s.id}
+              className="rounded-full border border-line px-4 py-2 text-sm font-medium"
+            >
+              {s.name}
+            </span>
+          ))}
+        </div>
+      ),
+    }),
+  );
 
-  const timeline = [
-    ...experiences.map((e) => ({
+  const timeline = experiences
+    .map((e) => ({
       id: e.id,
       title: e.title,
       org: e.organization,
+      type: e.type,
       start: e.startDate,
       end: e.endDate,
       description: e.description,
-    })),
-  ].sort((a, b) => (b.start ?? "").localeCompare(a.start ?? ""));
+    }))
+    .sort((a, b) => (b.start ?? "").localeCompare(a.start ?? ""));
+
+  const startYears = experiences
+    .map((e) => Number(e.startDate?.slice(0, 4)))
+    .filter((y) => y > 1970);
+  const years =
+    startYears.length > 0
+      ? new Date().getFullYear() - Math.min(...startYears)
+      : 0;
+  const stats = [
+    { label: "Projects", value: projects.length },
+    { label: "Certifications", value: certifications.length },
+    { label: "Technologies", value: skills.length },
+    { label: "Years building", value: years },
+  ].filter((s) => s.value > 0);
+
+  const name = owner.name ?? "Bintang Mesir";
+  const bioParas = (owner.bio ?? "").split("\n\n").filter(Boolean);
+  const tagline =
+    (owner.bio ?? "").split(/(?<=[.!?])\s/)[0] ??
+    "Software Engineer building scalable, modern web applications.";
 
   return (
     <>
       <SiteNav />
+      {/* Semua section dan footer adalah sibling langsung di <main>:
+          syarat agar efek "ditutupi section berikutnya" (sticky) bekerja. */}
       <main>
-        {/* ---------- Hero ---------- */}
-        <section className="relative flex min-h-[92vh] items-center overflow-hidden border-b border-line">
-          <div className="bg-blueprint-grid absolute inset-0" />
-          <HeroCanvas />
-          <div className="relative mx-auto w-full max-w-6xl px-6 py-20">
-            <p className="font-data mb-5 text-sm text-accent">
-              Software Engineer &amp; Full Stack Web Developer
-            </p>
-            <h1 className="text-display">{owner.name ?? "Bintang Mesir"}</h1>
-            <p className="mt-7 max-w-xl text-lg leading-relaxed text-ink-muted md:text-xl">
-              {owner.bio ??
-                "Software Engineer building scalable, modern web applications."}
-            </p>
-            <div className="mt-10 flex flex-wrap gap-3">
-              <Link
-                href="#projects"
-                className={buttonVariants({ variant: "primary", size: "lg" })}
-              >
-                View projects
-              </Link>
-              {owner.cvUrl && (
-                <a
-                  href={owner.cvUrl}
-                  className={buttonVariants({ variant: "outline", size: "lg" })}
-                >
-                  Download CV
-                </a>
-              )}
-            </div>
-            <div className="font-data mt-20 flex items-center gap-2 text-xs text-ink-muted">
-              <span className="h-px w-8 bg-line" />
-              scroll to explore
-            </div>
-          </div>
-        </section>
+        <StackSection index={0} id="top" bare>
+          <HeroSection
+            name={name}
+            tagline={tagline}
+            domicile={owner.domicile}
+            cvUrl={owner.cvUrl}
+            profileUrl={owner.profileUrl}
+          />
+          <Marquee items={skills.slice(0, 24).map((s) => s.name)} />
+        </StackSection>
 
-        <div className="mx-auto max-w-6xl px-6">
-          {/* ---------- About ---------- */}
-          <section id="about" className="py-20 md:py-28">
-            <SectionHeading index={1} title="About" />
-            <div className="grid grid-cols-1 gap-10 md:grid-cols-[1fr_280px]">
-              <Reveal delay={0.05}>
-                <div className="max-w-[72ch] space-y-4 leading-relaxed text-ink-muted">
-                  {(owner.bio ?? "")
-                    .split("\n\n")
-                    .filter(Boolean)
-                    .map((para) => (
-                      <p key={para.slice(0, 24)}>{para}</p>
-                    ))}
+        {/* ---------- Projects ---------- */}
+        <StackSection index={1} id="projects" tone="surface">
+          <SectionHeading
+            index={1}
+            title="Selected projects"
+            kicker="Selected work"
+          />
+          <Stagger className="grid grid-cols-1 gap-x-6 gap-y-14 md:grid-cols-2">
+            {projects.map((p, i) => (
+              <StaggerItem key={p.id}>
+                <ProjectCard p={p} i={i} />
+              </StaggerItem>
+            ))}
+            {projects.length === 0 && (
+              <p className="text-sm text-ink-muted">Belum ada project.</p>
+            )}
+          </Stagger>
+        </StackSection>
+
+        {/* ---------- About ---------- */}
+        <StackSection index={2} id="about">
+          <SectionHeading index={2} title="About me" kicker="About" />
+          <Stagger gap={0.12}>
+            {bioParas[0] && (
+              <StaggerItem>
+                <p className="max-w-4xl text-2xl font-semibold leading-tight tracking-tight md:text-4xl">
+                  {bioParas[0]}
+                </p>
+              </StaggerItem>
+            )}
+            {bioParas.length > 1 && (
+              <StaggerItem>
+                <div className="mt-8 max-w-[65ch] space-y-4 leading-relaxed text-ink-muted">
+                  {bioParas.slice(1).map((para) => (
+                    <p key={para.slice(0, 24)}>{para}</p>
+                  ))}
                 </div>
-              </Reveal>
-              <Reveal
-                delay={0.1}
-                className="font-data space-y-3 text-sm text-ink-muted"
-              >
-                {owner.profileUrl && (
-                  <div className="relative mb-4 aspect-square w-full overflow-hidden rounded-[6px] border border-line">
-                    <Image
-                      src={owner.profileUrl}
-                      alt={owner.name ?? "Profile"}
-                      fill
-                      className="object-cover"
-                      sizes="280px"
-                    />
-                  </div>
+              </StaggerItem>
+            )}
+            <StaggerItem>
+              <div className="font-data mt-10 flex flex-wrap gap-3 text-xs">
+                {owner.domicile && (
+                  <span className="chip text-ink-muted">{owner.domicile}</span>
                 )}
-                {owner.domicile && <p>domicile: {owner.domicile}</p>}
-                {owner.email && <p>email: {owner.email}</p>}
+                {owner.email && (
+                  <a
+                    href={`mailto:${owner.email}`}
+                    className="chip text-ink-muted hover:text-ink"
+                  >
+                    {owner.email}
+                  </a>
+                )}
                 {owner.linkedinUrl && (
-                  <p>
-                    linkedin:{" "}
-                    <a href={owner.linkedinUrl} className="text-accent">
-                      ↗
-                    </a>
-                  </p>
+                  <a
+                    href={owner.linkedinUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="chip text-ink-muted hover:text-ink"
+                  >
+                    linkedin ↗
+                  </a>
                 )}
-              </Reveal>
-            </div>
-          </section>
+              </div>
+            </StaggerItem>
+          </Stagger>
+        </StackSection>
 
-          {/* ---------- Education ---------- */}
-          <section
-            id="education"
-            className="border-t border-line py-20 md:py-28"
-          >
-            <SectionHeading index={2} title="Education" />
-            <div className="space-y-4">
-              {education.map((e, i) => (
-                <Reveal key={e.id} delay={i * 0.05}>
-                  <Card className="flex flex-col justify-between gap-2 md:flex-row md:items-center">
-                    <div>
-                      <p className="text-lg font-medium">
-                        {e.degree ?? e.institution}
-                      </p>
-                      <p className="text-sm text-ink-muted">{e.institution}</p>
-                    </div>
-                    <div className="font-data flex items-center gap-3 text-xs text-ink-muted">
-                      <span>
-                        {formatDate(e.startDate)} —{" "}
-                        {e.endDate ? formatDate(e.endDate) : "now"}
-                      </span>
-                      {e.gpa && <Badge tone="accent">GPA {e.gpa}</Badge>}
-                    </div>
-                  </Card>
-                </Reveal>
+        {/* ---------- Skills ---------- */}
+        {skillItems.length > 0 && (
+          <StackSection index={3} id="skills" tone="surface">
+            <SectionHeading
+              index={3}
+              title="What I work with"
+              kicker="Skills"
+            />
+            <Reveal>
+              <Accordion items={skillItems} />
+            </Reveal>
+          </StackSection>
+        )}
+
+        {/* ---------- Stats ---------- */}
+        {stats.length > 0 && (
+          <StackSection index={4}>
+            <SectionHeading index={4} title="By the numbers" kicker="Impact" />
+            <Stagger className="grid grid-cols-2 gap-4 md:grid-cols-4">
+              {stats.map((s, i) => (
+                <StaggerItem key={s.label}>
+                  <div
+                    className={cn(
+                      "flex min-h-48 flex-col justify-between rounded-[28px] p-6 text-on-block",
+                      blockClass(i + 1),
+                    )}
+                  >
+                    <span className="font-data text-xs uppercase tracking-widest opacity-70">
+                      {s.label}
+                    </span>
+                    <CountUp value={s.value} className="display-lg" />
+                  </div>
+                </StaggerItem>
               ))}
-            </div>
-          </section>
+            </Stagger>
+          </StackSection>
+        )}
 
-          {/* ---------- Experience ---------- */}
-          <section
-            id="experience"
-            className="border-t border-line py-20 md:py-28"
-          >
-            <SectionHeading index={3} title="Experience & training" />
-            <div className="space-y-6">
-              {timeline.map((item, i) => (
-                <Reveal key={item.id} delay={i * 0.04}>
-                  <div className="grid grid-cols-1 gap-2 border-b border-line pb-6 md:grid-cols-[160px_1fr]">
+        {/* ---------- Experience ---------- */}
+        <StackSection index={5} id="experience" tone="surface">
+          <SectionHeading
+            index={5}
+            title="Experience & training"
+            kicker="Experience"
+          />
+          <div className="border-b border-line">
+            {timeline.map((item) => (
+              <ActiveOnScroll key={item.id}>
+                <div className="grid gap-3 border-t border-line py-7 md:grid-cols-[200px_1fr_auto] md:gap-8">
+                  <p className="font-data text-xs text-ink-muted">
+                    {formatDate(item.start)} —{" "}
+                    {item.end ? formatDate(item.end) : "now"}
+                  </p>
+                  <div>
+                    <h3 className="text-2xl font-semibold tracking-tight md:text-3xl">
+                      {item.title}
+                    </h3>
+                    <p className="mt-1 text-ink-muted">{item.org}</p>
+                    {item.description && (
+                      <p className="mt-3 max-w-[65ch] text-sm leading-relaxed text-ink-muted">
+                        {item.description}
+                      </p>
+                    )}
+                  </div>
+                  <span className="chip h-fit self-start text-ink-muted">
+                    {item.type}
+                  </span>
+                </div>
+              </ActiveOnScroll>
+            ))}
+          </div>
+        </StackSection>
+
+        {/* ---------- Education ---------- */}
+        {education.length > 0 && (
+          <StackSection index={6} id="education">
+            <SectionHeading index={6} title="Education" />
+            <div className="border-b border-line">
+              {education.map((e) => (
+                <ActiveOnScroll key={e.id}>
+                  <div className="grid gap-3 border-t border-line py-7 md:grid-cols-[200px_1fr_auto] md:gap-8">
                     <p className="font-data text-xs text-ink-muted">
-                      {formatDate(item.start)} —{" "}
-                      {item.end ? formatDate(item.end) : "now"}
+                      {formatDate(e.startDate)} —{" "}
+                      {e.endDate ? formatDate(e.endDate) : "now"}
                     </p>
                     <div>
-                      <p className="text-lg font-medium">{item.title}</p>
-                      <p className="text-sm text-accent">{item.org}</p>
-                      {item.description && (
-                        <p className="mt-2 max-w-[65ch] text-sm text-ink-muted">
-                          {item.description}
-                        </p>
-                      )}
+                      <h3 className="text-2xl font-semibold tracking-tight md:text-3xl">
+                        {e.degree ?? e.institution}
+                      </h3>
+                      <p className="mt-1 text-ink-muted">{e.institution}</p>
                     </div>
+                    {e.gpa && (
+                      <span className="chip h-fit self-start text-ink-muted">
+                        GPA {e.gpa}
+                      </span>
+                    )}
                   </div>
-                </Reveal>
+                </ActiveOnScroll>
               ))}
             </div>
-          </section>
+          </StackSection>
+        )}
 
-          {/* ---------- Certifications ---------- */}
-          {certifications.length > 0 && (
-            <section
-              id="certifications"
-              className="border-t border-line py-20 md:py-28"
-            >
-              <SectionHeading index={4} title="Certifications" />
-              <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                {certifications.map((c, i) => (
-                  <Reveal key={c.id} delay={i * 0.03}>
-                    <Card className="p-0 overflow-hidden">
-                      {c.imageUrl && (
-                        <div className="relative aspect-[4/3] w-full">
-                          <Image
-                            src={c.imageUrl}
-                            alt={c.title}
-                            fill
-                            className="object-cover"
-                            sizes="(max-width: 768px) 50vw, 25vw"
-                          />
-                        </div>
-                      )}
-                      <div className="p-3">
-                        <p className="text-sm font-medium leading-snug">
-                          {c.title}
-                        </p>
-                        <p className="font-data mt-1 text-xs text-ink-muted">
-                          {c.issuer}
-                        </p>
-                      </div>
-                    </Card>
-                  </Reveal>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* ---------- Skills ---------- */}
-          <section id="skills" className="border-t border-line py-20 md:py-28">
-            <SectionHeading index={5} title="Skills" />
-            <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-              {Object.entries(skillsByCategory).map(([category, items], i) => (
-                <Reveal key={category} delay={i * 0.05}>
-                  <p className="font-data mb-3 text-xs text-ink-muted">
-                    {category}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {items.map((s) => (
-                      <Badge
-                        key={s.id}
-                        tone="accent"
-                        className="rounded-[4px] border border-line px-2 py-1"
-                      >
-                        {s.name}
-                      </Badge>
-                    ))}
-                  </div>
-                </Reveal>
-              ))}
-            </div>
-          </section>
-
-          {/* ---------- Projects ---------- */}
+        {/* ---------- Certifications ---------- */}
+        {certifications.some((c) => c.imageUrl) && (
           <section
-            id="projects"
-            className="border-t border-line py-20 md:py-28"
+            id="certifications"
+            style={{ zIndex: 8 }}
+            className="relative rounded-t-[28px] bg-surface shadow-[0_-24px_48px_-28px_rgb(0_0_0/0.35)] md:rounded-t-[40px]"
           >
-            <SectionHeading index={6} title="Projects" />
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              {projects.map((p, i) => (
-                <Reveal key={p.id} delay={i * 0.05}>
-                  <a
-                    href={p.liveUrl || p.repoUrl || undefined}
-                    target={p.liveUrl || p.repoUrl ? "_blank" : undefined}
-                    rel="noreferrer"
-                    className="group block overflow-hidden rounded-[6px] border border-line transition-colors hover:border-accent"
-                  >
-                    <div className="relative flex h-44 items-center justify-center overflow-hidden bg-surface">
-                      {p.imageUrl ? (
-                        // biome-ignore lint/performance/noImgElement: project image may be a local upload, next/image optimization not essential here
-                        <img
-                          src={p.imageUrl}
-                          alt=""
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <>
-                          <div className="bg-blueprint-grid absolute inset-0 opacity-40" />
-                          <span className="font-data relative text-6xl font-semibold text-line transition-colors group-hover:text-accent/30">
-                            {String(i + 1).padStart(2, "0")}
-                          </span>
-                        </>
-                      )}
-                    </div>
-                    <div className="p-5">
-                      <div className="flex items-start justify-between gap-3">
-                        <p className="text-lg font-medium">{p.title}</p>
-                        <Badge
-                          tone={p.source === "github" ? "accent" : "default"}
-                        >
-                          {p.source}
-                        </Badge>
-                      </div>
-                      <p className="mt-2 text-sm text-ink-muted">
-                        {p.description}
-                      </p>
-                      <div className="mt-4 flex gap-3 font-data text-xs text-accent">
-                        {p.repoUrl && <span>repo ↗</span>}
-                        {p.liveUrl && <span>live ↗</span>}
-                      </div>
-                    </div>
-                  </a>
-                </Reveal>
-              ))}
-              {projects.length === 0 && (
-                <p className="text-sm text-ink-muted">Belum ada project.</p>
+            <CertGallery
+              index={7}
+              items={certifications.flatMap((c) =>
+                c.imageUrl
+                  ? [
+                      {
+                        id: c.id,
+                        title: c.title,
+                        issuer: c.issuer,
+                        imageUrl: c.imageUrl,
+                        verifyUrl: c.verifyUrl,
+                      },
+                    ]
+                  : [],
               )}
-            </div>
+            />
           </section>
+        )}
 
-          {/* ---------- Articles ---------- */}
-          {recentArticles.length > 0 && (
-            <section
-              id="articles"
-              className="border-t border-line py-20 md:py-28"
-            >
-              <SectionHeading index={7} title="Latest articles" />
-              <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
-                {recentArticles.map((a, i) => (
-                  <Reveal key={a.id} delay={i * 0.05}>
-                    <Link href={`/articles/${a.slug}`}>
-                      <Card className="h-full transition-colors hover:border-accent">
-                        <ArticleCover
-                          src={a.coverImageUrl}
-                          className="mb-4 w-full"
-                        />
-                        <div className="font-data flex items-center gap-2 text-xs text-ink-muted">
-                          <span>{formatDate(a.publishedAt)}</span>
-                          {a.aiGenerated && <Badge tone="accent">ai</Badge>}
-                        </div>
-                        <p className="mt-2 text-lg font-medium leading-snug">
-                          {a.title}
-                        </p>
-                        <p className="mt-2 text-sm text-ink-muted">
-                          {a.excerpt}
-                        </p>
-                      </Card>
-                    </Link>
-                  </Reveal>
-                ))}
-              </div>
-              <Reveal delay={0.1} className="mt-6">
-                <Link
-                  href="/articles"
-                  className="font-data text-sm text-accent"
-                >
-                  View all articles →
-                </Link>
-              </Reveal>
-            </section>
-          )}
+        {/* ---------- Articles ---------- */}
+        {recentArticles.length > 0 && (
+          <StackSection index={8} id="articles">
+            <SectionHeading
+              index={8}
+              title="Latest articles"
+              kicker="Writing"
+            />
+            <Stagger className="grid grid-cols-1 gap-x-6 gap-y-12 md:grid-cols-3">
+              {recentArticles.map((a, i) => (
+                <StaggerItem key={a.id}>
+                  <ArticleCard a={a} index={i} />
+                </StaggerItem>
+              ))}
+            </Stagger>
+            <div className="mt-12">
+              <Link href="/articles" className="pill pill-outline">
+                View all articles →
+              </Link>
+            </div>
+          </StackSection>
+        )}
+
+        {/* Footer menutup section terakhir dengan cara yang sama (z di bawah nav, z-30). */}
+        <div className="footer-invert relative" style={{ zIndex: 20 }}>
+          <SiteFooter />
         </div>
       </main>
-      <SiteFooter />
     </>
   );
 }

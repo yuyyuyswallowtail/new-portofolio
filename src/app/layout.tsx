@@ -1,5 +1,6 @@
 import { MotionConfig } from "framer-motion";
 import type { Metadata } from "next";
+import { PageTransition } from "@/components/site/page-transition";
 import { ThemeScript } from "@/components/site/theme-script";
 import "./globals.css";
 
@@ -39,7 +40,9 @@ export default function RootLayout({
         {/* reducedMotion="user" makes every Framer Motion animation in the app
             automatically honor the OS/browser prefers-reduced-motion setting,
             without each component having to check it individually. */}
-        <MotionConfig reducedMotion="user">{children}</MotionConfig>
+        <MotionConfig reducedMotion="user">
+          <PageTransition>{children}</PageTransition>
+        </MotionConfig>
       </body>
     </html>
   );
