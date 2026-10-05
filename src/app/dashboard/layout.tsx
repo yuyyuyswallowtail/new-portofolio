@@ -11,7 +11,7 @@ import { pendingCount as pendingCommentCount } from "@/modules/comments/service"
 
 // Berlaku juga untuk server action di bawah /dashboard (generate artikel AI +
 // cover image bisa lebih dari 30 detik). Tetap lebih pendek dari default 300 detik.
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 export default async function DashboardLayout({
   children,
