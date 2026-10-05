@@ -32,8 +32,8 @@ const PUBLIC_CACHE_TTL_MS = 30_000; // see lib/cache.ts — single-instance, sho
 // batas maxDuration (dashboard 120 detik, cron 60 detik). Sisa waktu setelah
 // teks selesai diberikan ke generateArticleImages, yang selalu mengembalikan
 // cover (SVG lokal kalau waktu habis) dan membawa hasil parsial.
-const MANUAL_BUDGET_MS = 100_000;
-const CRON_BUDGET_MS = 100_000;
+const MANUAL_BUDGET_MS = 240_000;
+const CRON_BUDGET_MS = 240_000;
 // Cadangan waktu untuk menyimpan ke database setelah gambar selesai.
 const IMAGE_SAFETY_MS = 8_000;
 

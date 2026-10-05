@@ -22,11 +22,11 @@ const STYLES = [
 const PALETTE =
   "dark background, teal as the accent color, no text, no letters, no logos, no people";
 const SKIP_HEADING = /(conclusion|kesimpulan|summary|penutup|references)/i;
-const MAX_SECTION_IMAGES = 2;
+const MAX_SECTION_IMAGES = 3;
 
 // ---------- Anggaran waktu (serverless: function dibatasi maxDuration) ----------
 // Total waktu default untuk semua gambar. Pemanggil bisa menimpa lewat options.budgetMs.
-const DEFAULT_BUDGET_MS = 80_000;
+const DEFAULT_BUDGET_MS = 240_000;
 // Gemini gambar dibatasi supaya Pollinations masih sempat dicoba.
 const GEMINI_IMAGE_MAX_MS = 25_000;
 // Waktu maksimum untuk cover (setelah itu jatuh ke SVG lokal).
@@ -110,6 +110,7 @@ function getSectionText(lines: string[], headingIdx: number): string {
 
 // Adegan fallback dan warna aksen per topik (dipakai kalau Gemini gagal/lambat).
 const TOPIC_LOOKS: { match: RegExp; scene: string; accent: string }[] = [
+  { match: /spring|java\b|jvm|maven|gradle/i, scene: "a steel coil spring standing on a workbench lifting a stack of small shipping crates", accent: "leaf green" },
   { match: /laravel|php|symfony|composer/i, scene: "a coral-red toolbox unfolding into neatly interlocking blocks", accent: "coral red" },
   { match: /python|django|flask|fastapi|pandas/i, scene: "a coiled ribbon racing along a track beside a brass stopwatch", accent: "warm yellow" },
   { match: /next\.?js|react|vue|svelte|frontend|webdev|css/i, scene: "a paper airplane carrying a stack of window panels across a speed gauge", accent: "sky blue" },
