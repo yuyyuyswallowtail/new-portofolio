@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ArticleBody } from "@/components/site/article-body";
 import { CommentsSection } from "@/components/site/comments-section";
 import { SiteFooter } from "@/components/site/footer";
 import { SiteNav } from "@/components/site/nav";
+import { ShareBar } from "@/components/site/share-bar";
 import { sanitizeArticleHtml } from "@/lib/markdown";
 import { isStaff } from "@/lib/rbac";
 import { getCurrentUser } from "@/lib/session";
@@ -55,11 +57,8 @@ export default async function ArticleDetailPage({
           />
         )}
         <div className="mx-auto mt-10 max-w-[72ch]">
-          <div
-            className="prose break-words max-w-none"
-            // biome-ignore lint/security/noDangerouslySetInnerHtml: html sudah disanitasi sanitize-html lewat sanitizeArticleHtml(), lihat SECURITY.md §3
-            dangerouslySetInnerHTML={{ __html: html }}
-          />
+          <ArticleBody html={html} />
+          <ShareBar title={article.title} slug={article.slug} />
           <CommentsSection
             articleId={article.id}
             articleSlug={article.slug}
