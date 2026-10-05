@@ -66,5 +66,8 @@
   "trustedDependencies": [
     "@node-rs/argon2",
     "sharp"
-  ]
+  ],
+  "engines": {
+    "node": "24.x"
+  }
 }
