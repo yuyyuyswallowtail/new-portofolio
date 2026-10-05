@@ -1,27 +1,55 @@
 import Link from "next/link";
+import { RevealText } from "@/components/site/motion";
+import { RetroComputerSlot } from "@/components/site/retro-computer-slot";
 import { getOwnerProfile } from "@/modules/content/repository";
+
+const LINKS = [
+  { href: "/#about", label: "About" },
+  { href: "/#projects", label: "Work" },
+  { href: "/#experience", label: "Experience" },
+  { href: "/articles", label: "Articles" },
+];
+
+const onBlockLink =
+  "rounded-full border border-on-block px-4 py-2 text-sm font-medium transition-colors hover:bg-on-block hover:text-white";
 
 export async function SiteFooter() {
   const owner = await getOwnerProfile();
+  const email = owner?.email ?? "hello@bintangmesir.dev";
+  const name = owner?.name ?? "Bintang Mesir";
 
   return (
-    <footer id="contact-footer" className="border-t border-line">
-      <div className="mx-auto max-w-6xl px-6 py-14">
-        <div className="grid grid-cols-1 gap-10 md:grid-cols-[1fr_auto]">
-          <div>
-            <p className="font-data text-sm text-accent">Let's work together</p>
-            <h2 className="mt-2 text-2xl font-semibold md:text-3xl">
-              {owner?.email ?? "hello@bintangmesir.dev"}
-            </h2>
-            <div className="font-data mt-4 space-y-1 text-sm text-ink-muted">
-              {owner?.phone && <p>{owner.phone}</p>}
-              <div className="flex gap-4">
+    <footer id="contact-footer">
+      <div className="mx-auto max-w-6xl px-6 pt-16">
+        <RetroComputerSlot />
+        <div className="grid gap-4 md:grid-cols-2">
+          <a
+            href={`mailto:${email}`}
+            className="flex min-h-56 flex-col justify-between rounded-[28px] bg-block-yellow p-7 text-on-block transition-transform hover:-translate-y-1"
+          >
+            <span className="font-data text-xs uppercase tracking-widest opacity-70">
+              Prefer mail?
+            </span>
+            <span className="break-all text-2xl font-semibold tracking-tight md:text-4xl">
+              {email} ↗
+            </span>
+          </a>
+
+          <div className="flex min-h-56 flex-col justify-between rounded-[28px] bg-block-blue p-7 text-on-block">
+            <span className="font-data text-xs uppercase tracking-widest opacity-70">
+              Let&apos;s work together
+            </span>
+            <div>
+              <p className="text-2xl font-semibold tracking-tight md:text-4xl">
+                Find me elsewhere
+              </p>
+              <div className="mt-4 flex flex-wrap items-center gap-3">
                 {owner?.linkedinUrl && (
                   <a
                     href={owner.linkedinUrl}
-                    className="hover:text-accent"
                     target="_blank"
                     rel="noreferrer"
+                    className={onBlockLink}
                   >
                     LinkedIn ↗
                   </a>
@@ -29,33 +57,52 @@ export async function SiteFooter() {
                 {owner?.githubUsername && (
                   <a
                     href={`https://github.com/${owner.githubUsername}`}
-                    className="hover:text-accent"
                     target="_blank"
                     rel="noreferrer"
+                    className={onBlockLink}
                   >
                     GitHub ↗
                   </a>
                 )}
+                {owner?.phone && (
+                  <span className="font-data text-sm">{owner.phone}</span>
+                )}
               </div>
             </div>
           </div>
-          <div className="flex flex-col justify-end gap-1 text-right">
-            <span className="font-data text-xs text-ink-muted">
-              © {new Date().getFullYear()} {owner?.name ?? "Bintang Mesir"}
+        </div>
+
+        <div className="mt-12 flex flex-col justify-between gap-6 border-t border-line pt-6 md:flex-row md:items-center">
+          <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm font-medium">
+            {LINKS.map((l) => (
+              <Link
+                key={l.href}
+                href={l.href}
+                className="text-ink-muted hover:text-ink"
+              >
+                {l.label}
+              </Link>
+            ))}
+          </nav>
+          <div className="font-data flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-ink-muted">
+            <span>
+              © {new Date().getFullYear()} {name}
             </span>
-            <span className="font-data text-xs text-ink-muted">
-              built with Next.js · Drizzle · Three.js · Framer Motion
-            </span>
-            {/* Deliberately small/muted, not in the main nav — see SECURITY.md */}
-            <Link
-              href="/login"
-              className="font-data text-xs text-ink-muted hover:text-accent"
-            >
+            <span>built with Next.js · Drizzle · Framer Motion</span>
+            {/* Sengaja kecil dan tidak di nav utama — lihat SECURITY.md */}
+            <Link href="/login" className="hover:text-accent">
               staff login →
             </Link>
           </div>
         </div>
       </div>
+
+      <p
+        aria-hidden="true"
+        className="mt-10 select-none overflow-hidden whitespace-nowrap px-4 pb-6 text-center text-[11.5vw] font-extrabold uppercase leading-[0.82] tracking-tighter"
+      >
+        <RevealText text={name} />
+      </p>
     </footer>
   );
 }
