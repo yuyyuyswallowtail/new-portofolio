@@ -14,11 +14,13 @@ import {
   moveSkillAction,
   updateSkillAction,
 } from "@/modules/content/actions";
+import { SkillLogoControl } from "./logo-control";
 
 export type SkillItem = {
   id: string;
   name: string;
   category: string | null;
+  logoUrl: string | null;
 };
 
 type FormState = { name: string; category: string };
@@ -100,6 +102,11 @@ export function SkillManager({ items }: { items: SkillItem[] }) {
           <span className="font-data text-xs text-ink-muted">
             {item.category ?? "Other"}
           </span>
+          <SkillLogoControl
+            id={item.id}
+            name={item.name}
+            logoUrl={item.logoUrl}
+          />
         </div>
       )}
     />

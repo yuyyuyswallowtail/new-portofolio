@@ -131,6 +131,7 @@ export const skillEntries = pgTable("skill_entries", {
     .references(() => users.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   category: text("category"),
+  logoUrl: text("logo_url"),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   deletedAt: timestamp("deleted_at"),

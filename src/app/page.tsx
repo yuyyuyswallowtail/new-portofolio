@@ -16,6 +16,7 @@ import { SiteNav } from "@/components/site/nav";
 import { ProjectCard } from "@/components/site/project-card";
 import { Reveal } from "@/components/site/reveal";
 import { SectionHeading } from "@/components/site/section-heading";
+import { SkillPile } from "@/components/site/skill-pile";
 import { StackSection } from "@/components/site/stack-section";
 import { cn, formatDate } from "@/lib/utils";
 import { listRecentForHome } from "@/modules/articles/service";
@@ -98,6 +99,14 @@ export default async function HomePage() {
       ),
     }),
   );
+
+  // Tumpukan sticker logo: tampil kalau minimal satu skill sudah punya logo.
+  const pileItems = skills.map((s) => ({
+    id: s.id,
+    name: s.name,
+    logoUrl: s.logoUrl,
+  }));
+  const showPile = skills.some((s) => s.logoUrl);
 
   const timeline = experiences
     .map((e) => ({
@@ -350,6 +359,11 @@ export default async function HomePage() {
             <Reveal>
               <Accordion items={skillItems} />
             </Reveal>
+            {showPile && (
+              <div className="mt-14">
+                <SkillPile items={pileItems} />
+              </div>
+            )}
           </StackSection>
         )}
 

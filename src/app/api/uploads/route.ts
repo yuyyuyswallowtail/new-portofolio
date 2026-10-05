@@ -4,21 +4,46 @@ import path from "node:path";
 import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { rateLimit } from "@/lib/rate-limit";
-import { can } from "@/lib/rbac";
+import { type Action, can } from "@/lib/rbac";
 import { getCurrentUser } from "@/lib/session";
 
 export const runtime = "nodejs";
 
-const ALLOWED_TYPES: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-  "image/gif": "gif",
+type FolderName = "articles" | "skills";
+type FolderConfig = {
+  permission: Action;
+  maxBytes: number;
+  types: Record<string, string>;
+  localDir: string;
 };
-// Vercel menolak body request > 4,5MB, jadi batasnya 4MB.
-const MAX_BYTES = 4 * 1024 * 1024;
 
-const LOCAL_DIR = path.join(process.cwd(), "public", "uploads", "articles");
+const FOLDERS: Record<FolderName, FolderConfig> = {
+  articles: {
+    permission: "articles.create",
+    // Vercel menolak body request > 4,5MB, jadi batasnya 4MB.
+    maxBytes: 4 * 1024 * 1024,
+    types: {
+      "image/jpeg": "jpg",
+      "image/png": "png",
+      "image/webp": "webp",
+      "image/gif": "gif",
+    },
+    localDir: path.join(process.cwd(), "public", "uploads", "articles"),
+  },
+  skills: {
+    // Logo skill: kecil (sudah diperkecil di browser), butuh transparansi.
+    permission: "content.manage",
+    maxBytes: 512 * 1024,
+    types: { "image/png": "png", "image/webp": "webp" },
+    localDir: path.join(process.cwd(), "public", "uploads", "skills"),
+  },
+};
+
+function sizeLabel(bytes: number) {
+  return bytes >= 1024 * 1024
+    ? `${bytes / 1024 / 1024}MB`
+    : `${Math.round(bytes / 1024)}KB`;
+}
 
 function supabaseConfig() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -33,11 +58,12 @@ function supabaseConfig() {
 
 async function saveToSupabase(
   cfg: NonNullable<ReturnType<typeof supabaseConfig>>,
+  folder: FolderName,
   filename: string,
   contentType: string,
   buffer: Buffer,
 ): Promise<string | null> {
-  const objectPath = `articles/${filename}`;
+  const objectPath = `${folder}/${filename}`;
   const res = await fetch(
     `${cfg.base}/storage/v1/object/${cfg.bucket}/${objectPath}`,
     {
@@ -62,14 +88,16 @@ async function saveToSupabase(
 }
 
 /**
- * Upload gambar (Tiptap + cover artikel). Dengan env Supabase terisi, file
- * disimpan di Supabase Storage (wajib di Vercel). Tanpa itu, jatuh ke disk
- * lokal (Docker Compose, volume `uploads_data`). Auth dan validasi
- * ukuran/MIME tetap di server (SECURITY.md §3).
+ * Upload gambar. Field `folder` opsional: "articles" (default, Tiptap + cover
+ * artikel) atau "skills" (logo skill, izin content.manage, maks 512KB).
+ * Dengan env Supabase terisi, file disimpan di Supabase Storage (wajib di
+ * Vercel). Tanpa itu, jatuh ke disk lokal (Docker Compose, volume
+ * `uploads_data`). Auth dan validasi ukuran/MIME tetap di server
+ * (SECURITY.md §3).
  */
 export async function POST(request: Request) {
   const user = await getCurrentUser();
-  if (!user || !can(user.role, "articles.create")) {
+  if (!user) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
@@ -90,21 +118,29 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
+
+  const folder: FolderName =
+    formData.get("folder") === "skills" ? "skills" : "articles";
+  const cfg = FOLDERS[folder];
+  if (!can(user.role, cfg.permission)) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+
   const file = formData.get("file");
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "no file" }, { status: 400 });
   }
 
-  const ext = ALLOWED_TYPES[file.type];
+  const ext = cfg.types[file.type];
   if (!ext) {
     return NextResponse.json(
       { error: "unsupported file type" },
       { status: 400 },
     );
   }
-  if (file.size > MAX_BYTES) {
+  if (file.size > cfg.maxBytes) {
     return NextResponse.json(
-      { error: "file too large (max 4MB)" },
+      { error: `file too large (max ${sizeLabel(cfg.maxBytes)})` },
       { status: 400 },
     );
   }
@@ -113,9 +149,9 @@ export async function POST(request: Request) {
   const filename = `${randomUUID()}.${ext}`;
 
   let url: string | null;
-  const cfg = supabaseConfig();
-  if (cfg) {
-    url = await saveToSupabase(cfg, filename, file.type, buffer);
+  const storage = supabaseConfig();
+  if (storage) {
+    url = await saveToSupabase(storage, folder, filename, file.type, buffer);
     if (!url) {
       return NextResponse.json({ error: "storage_failed" }, { status: 502 });
     }
@@ -126,11 +162,16 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   } else {
-    await mkdir(LOCAL_DIR, { recursive: true });
-    await writeFile(path.join(LOCAL_DIR, filename), buffer);
-    url = `/uploads/articles/${filename}`;
+    await mkdir(cfg.localDir, { recursive: true });
+    await writeFile(path.join(cfg.localDir, filename), buffer);
+    url = `/uploads/${folder}/${filename}`;
   }
 
-  logger.info("upload_success", { userId: user.id, url, size: file.size });
+  logger.info("upload_success", {
+    userId: user.id,
+    folder,
+    url,
+    size: file.size,
+  });
   return NextResponse.json({ url });
 }
