@@ -2,13 +2,7 @@ import Link from "next/link";
 import { RevealText } from "@/components/site/motion";
 import { RetroComputerSlot } from "@/components/site/retro-computer-slot";
 import { getOwnerProfile } from "@/modules/content/repository";
-
-const LINKS = [
-  { href: "/#about", label: "About" },
-  { href: "/#projects", label: "Work" },
-  { href: "/#experience", label: "Experience" },
-  { href: "/articles", label: "Articles" },
-];
+import { NAV_LINKS as LINKS } from "./nav-links";
 
 const onBlockLink =
   "rounded-full border border-on-block px-4 py-2 text-sm font-medium transition-colors hover:bg-on-block hover:text-white";

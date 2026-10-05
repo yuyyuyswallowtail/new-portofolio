@@ -4,13 +4,8 @@ import { useMotionValueEvent, useScroll } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { NAV_LINKS as LINKS } from "./nav-links";
 import { ThemeToggle } from "./theme-toggle";
-
-const LINKS = [
-  { href: "/", label: "Home" },
-  { href: "/projects", label: "Projects" },
-  { href: "/articles", label: "Articles" },
-];
 
 export function SiteNav() {
   const [open, setOpen] = useState(false);
