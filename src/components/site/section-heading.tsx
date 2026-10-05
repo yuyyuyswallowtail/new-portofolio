@@ -1,31 +1,32 @@
 import { cn } from "@/lib/utils";
+import { RevealText } from "./motion";
 import { Reveal } from "./reveal";
 
 /**
- * Editorial-grid section marker: a large index number + title, per
- * DESIGN_SYSTEM.md's "numbered section" convention. index is zero-padded
- * (01, 02, ...) and rendered in the data/mono face.
+ * Penanda section: label mono bernomor ("02 / ABOUT") muncul dulu, lalu judul
+ * besar naik kata demi kata dari balik mask.
  */
 export function SectionHeading({
   index,
   title,
+  kicker,
   className,
 }: {
   index: number;
   title: string;
+  kicker?: string;
   className?: string;
 }) {
   return (
-    <Reveal
-      className={cn("mb-10 flex items-baseline gap-4 md:mb-14", className)}
-    >
-      <span className="font-data text-sm text-accent">
-        {String(index).padStart(2, "0")}
-      </span>
-      <h2 className="text-3xl font-semibold tracking-tight md:text-5xl">
-        {title}
+    <div className={cn("mb-10 md:mb-14", className)}>
+      <Reveal>
+        <p className="kicker">
+          {String(index).padStart(2, "0")} / {kicker ?? title}
+        </p>
+      </Reveal>
+      <h2 className="display-lg mt-3">
+        <RevealText text={title} delay={0.1} />
       </h2>
-      <span className="h-px flex-1 bg-line" />
-    </Reveal>
+    </div>
   );
 }
