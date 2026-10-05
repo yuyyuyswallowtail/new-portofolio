@@ -1,7 +1,5 @@
 import "server-only";
-import { randomUUID } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
-import path from "node:path";
+import { saveArticleImage } from "@/lib/image-storage";
 import { parseArticleJson } from "@/lib/json-repair";
 
 const PRIMARY_TEXT_MODEL = process.env.GEMINI_TEXT_MODEL || "gemini-3.8-flash";
@@ -21,7 +19,6 @@ const TEXT_MODELS = Array.from(
 );
 const IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL || "gemini-3.1-flash-image";
 const API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
-const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "articles");
 const IMAGE_EXT: Record<string, string> = {
   "image/png": "png",
   "image/jpeg": "jpg",
@@ -48,6 +45,9 @@ function sleep(ms: number) {
  * ~60 detik untuk reset dan limit harian tidak reset sampai besok, jadi
  * retry cepat hanya membuang kuota. Status lain (400, 401, 404, ...)
  * adalah masalah nyata dan langsung dikembalikan.
+ *
+ * Tiap request punya timeout (default 60 detik) supaya panggilan yang
+ * menggantung tidak menghabiskan batas waktu function serverless.
  */
 async function fetchGeminiWithRetry(
   url: string,
@@ -55,13 +55,16 @@ async function fetchGeminiWithRetry(
   {
     retries = 3,
     baseDelayMs = 2000,
-  }: { retries?: number; baseDelayMs?: number } = {},
+    timeoutMs = 60_000,
+  }: { retries?: number; baseDelayMs?: number; timeoutMs?: number } = {},
 ): Promise<Response> {
-  let res = await fetch(url, init);
-  for (let attempt = 0; attempt < retries && res.status === 503; attempt++) {
+  const attempt = () =>
+    fetch(url, { ...init, signal: init.signal ?? AbortSignal.timeout(timeoutMs) });
+  let res = await attempt();
+  for (let n = 0; n < retries && res.status === 503; n++) {
     await res.text().catch(() => undefined);
-    await sleep(baseDelayMs * 2 ** attempt);
-    res = await fetch(url, init);
+    await sleep(baseDelayMs * 2 ** n);
+    res = await attempt();
   }
   return res;
 }
@@ -183,9 +186,9 @@ markdown fences, no commentary) matching exactly:
 }
 
 /**
- * Generate cover image, simpan ke public/uploads/articles, dan kembalikan
- * URL-nya (/uploads/articles/xxx.png) — bukan data URL — supaya kolom
- * cover_image_url tetap kecil dan konsisten dengan upload manual.
+ * Generate cover image, simpan lewat saveArticleImage (Supabase Storage di
+ * Vercel, disk lokal di dev/Docker), dan kembalikan URL-nya — bukan data URL —
+ * supaya kolom cover_image_url tetap kecil dan konsisten dengan upload manual.
  */
 export async function generateCoverImage(prompt: string): Promise<string> {
   const key = requireApiKey();
@@ -214,6 +217,7 @@ background with a single teal accent color, 16:9 aspect ratio.`,
         },
       }),
     },
+    { retries: 1, timeoutMs: 45_000 },
   );
 
   if (!res.ok) {
@@ -235,13 +239,11 @@ background with a single teal accent color, 16:9 aspect ratio.`,
 
   const mime: string = imagePart.inlineData.mimeType || "image/png";
   const ext = IMAGE_EXT[mime] ?? "png";
-  const filename = `${randomUUID()}.${ext}`;
-  await mkdir(UPLOAD_DIR, { recursive: true });
-  await writeFile(
-    path.join(UPLOAD_DIR, filename),
+  return saveArticleImage(
     Buffer.from(imagePart.inlineData.data, "base64"),
+    ext,
+    mime,
   );
-  return `/uploads/articles/${filename}`;
 }
 
 export function getTextModels(): string[] {
@@ -268,7 +270,7 @@ export async function generateVisualPrompt(
           generationConfig: { temperature: 0.7 },
         }),
       },
-      { retries: 1 },
+      { retries: 1, timeoutMs: 20_000 },
     );
     if (res.ok) {
       const data = await res.json();
@@ -299,7 +301,7 @@ export async function classifyJson<T>(instruction: string): Promise<T | null> {
           },
         }),
       },
-      { retries: 1 },
+      { retries: 1, timeoutMs: 20_000 },
     );
     if (res.ok) {
       const data = await res.json();

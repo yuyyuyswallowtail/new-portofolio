@@ -1,9 +1,6 @@
 import "server-only";
-import { randomUUID } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
-import path from "node:path";
+import { saveArticleImage } from "@/lib/image-storage";
 
-const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "articles");
 const EXT: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
@@ -34,7 +31,7 @@ function throttle(): Promise<void> {
   return next;
 }
 
-/** Generate gambar gratis via Pollinations, simpan ke public/uploads/articles. */
+/** Generate gambar gratis via Pollinations, simpan lewat saveArticleImage. */
 export async function generatePollinationsImage(
   prompt: string,
   {
@@ -67,10 +64,7 @@ export async function generatePollinationsImage(
         } else {
           const buffer = Buffer.from(await res.arrayBuffer());
           if (buffer.length >= 5_000) {
-            const filename = `${randomUUID()}.${ext}`;
-            await mkdir(UPLOAD_DIR, { recursive: true });
-            await writeFile(path.join(UPLOAD_DIR, filename), buffer);
-            return `/uploads/articles/${filename}`;
+            return await saveArticleImage(buffer, ext, mime);
           }
           lastError = "image too small";
         }
@@ -80,7 +74,7 @@ export async function generatePollinationsImage(
         if (res.status >= 500) await sleep(15_000);
       }
     } catch (err) {
-      lastError = (err as Error).message; // timeout / jaringan: coba lagi
+      lastError = (err as Error).message; // timeout / jaringan / penyimpanan: coba lagi
     }
   }
 

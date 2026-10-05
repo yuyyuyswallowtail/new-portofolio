@@ -2,12 +2,9 @@ import "server-only";
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { users } from "@/db/schema";
-import { cached, invalidateCachePrefix } from "@/lib/cache";
-import {
-  generateArticle,
-  regenerateArticle,
-} from "@/lib/gemini";
 import { generateArticleImages } from "@/lib/article-images";
+import { cached, invalidateCachePrefix } from "@/lib/cache";
+import { generateArticle, regenerateArticle } from "@/lib/gemini";
 import { logger } from "@/lib/logger";
 import { htmlToPlainText, markdownToHtml } from "@/lib/markdown";
 import { rateLimit } from "@/lib/rate-limit";
@@ -30,6 +27,32 @@ type CurrentUser = { id: string; role: Role } | null;
 
 const PUBLIC_CACHE_PREFIX = "articles:public:";
 const PUBLIC_CACHE_TTL_MS = 30_000; // see lib/cache.ts — single-instance, short TTL
+
+// Anggaran waktu total (sejak mulai) untuk generate + gambar, di bawah batas
+// maxDuration (dashboard 120 detik, cron 60 detik). Kalau gambar tidak sempat
+// selesai, artikel tetap disimpan tanpa gambar.
+const MANUAL_BUDGET_MS = 100_000;
+const CRON_BUDGET_MS = 50_000;
+const MIN_IMAGE_BUDGET_MS = 10_000;
+
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error(`${label} timeout setelah ${ms}ms`)),
+      ms,
+    );
+    p.then(
+      (v) => {
+        clearTimeout(timer);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(timer);
+        reject(e);
+      },
+    );
+  });
+}
 
 async function uniqueSlug(base: string): Promise<string> {
   let slug = slugify(base) || "article";
@@ -246,6 +269,9 @@ export async function regenerateWithFeedback(
  * optionally a cover image (Gemini, Pollinations, or local SVG fallback), saves it as a draft. A human (admin/super_admin, or the editor
  * who owns it) still has to publish it — AI never publishes directly, see
  * PRD.md §5.2 A9. Rate-limited per user: AI generation hits a metered API.
+ *
+ * Gambar dibatasi anggaran waktu (MANUAL_BUDGET_MS): kalau tidak sempat,
+ * artikel tetap disimpan sebagai draft tanpa gambar.
  */
 export async function generateWithAi(
   user: CurrentUser,
@@ -254,6 +280,8 @@ export async function generateWithAi(
   if (!user || !can(user.role, "articles.create")) {
     return { ok: false, error: "Kamu tidak punya izin membuat artikel." };
   }
+
+  const startedAt = Date.now();
 
   const limit = rateLimit(`ai-generate:${user.id}`, {
     limit: 5,
@@ -284,15 +312,27 @@ export async function generateWithAi(
 
   let coverImageUrl: string | undefined;
   if (input.withImage) {
-    try {
-      const imgs = await generateArticleImages(generated);
-      coverImageUrl = imgs.coverImageUrl;
-      generated.contentMd = imgs.contentMd;
-    } catch (err) {
-      logger.warn("ai_generate_image_failed", {
+    const remaining = MANUAL_BUDGET_MS - (Date.now() - startedAt);
+    if (remaining < MIN_IMAGE_BUDGET_MS) {
+      logger.warn("ai_generate_image_skipped", {
         userId: user.id,
-        error: (err as Error).message,
+        remainingMs: remaining,
       });
+    } else {
+      try {
+        const imgs = await withTimeout(
+          generateArticleImages(generated),
+          remaining,
+          "generateArticleImages",
+        );
+        coverImageUrl = imgs.coverImageUrl;
+        generated.contentMd = imgs.contentMd;
+      } catch (err) {
+        logger.warn("ai_generate_image_failed", {
+          userId: user.id,
+          error: (err as Error).message,
+        });
+      }
     }
   }
 
@@ -318,11 +358,17 @@ export async function generateWithAi(
  * route in src/app/api/cron/generate-article or the "Run now" dashboard
  * button). Topic comes from getTrendingTechTopic() when available, falling
  * back to a random AI/web-dev/networking topic like the manual flow.
+ *
+ * Anggaran waktu gambar lebih ketat untuk cron (route-nya maxDuration 60 detik).
  */
 export async function runAutoGenerate(options: {
   publish: boolean;
   triggeredBy: "cron" | "manual";
 }): Promise<ActionResult<{ id: string; slug: string; topic: string }>> {
+  const startedAt = Date.now();
+  const budgetMs =
+    options.triggeredBy === "cron" ? CRON_BUDGET_MS : MANUAL_BUDGET_MS;
+
   const [owner] = await db
     .select()
     .from(users)
@@ -355,14 +401,26 @@ export async function runAutoGenerate(options: {
   }
 
   let coverImageUrl: string | undefined;
-  try {
-    const imgs = await generateArticleImages(generated);
+  const remaining = budgetMs - (Date.now() - startedAt);
+  if (remaining < MIN_IMAGE_BUDGET_MS) {
+    logger.warn("auto_generate_image_skipped", {
+      triggeredBy: options.triggeredBy,
+      remainingMs: remaining,
+    });
+  } else {
+    try {
+      const imgs = await withTimeout(
+        generateArticleImages(generated),
+        remaining,
+        "generateArticleImages",
+      );
       coverImageUrl = imgs.coverImageUrl;
       generated.contentMd = imgs.contentMd;
-  } catch (err) {
-    logger.warn("auto_generate_image_failed", {
-      error: (err as Error).message,
-    });
+    } catch (err) {
+      logger.warn("auto_generate_image_failed", {
+        error: (err as Error).message,
+      });
+    }
   }
 
   const slug = await uniqueSlug(generated.title);

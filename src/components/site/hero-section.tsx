@@ -73,7 +73,7 @@ export function HeroSection({
             {tagline}
           </motion.p>
           <motion.div className="mt-8 flex flex-wrap gap-3" {...rise(0.58)}>
-            <Link href="/#projects" className="pill pill-solid">
+            <Link href="/projects" className="pill pill-solid">
               View projects →
             </Link>
             {cvUrl && (
