@@ -14,7 +14,12 @@ if (!connectionString) {
 
 // Reuse the client across hot reloads in dev so we don't exhaust Postgres connections.
 const client =
-  globalThis.__portofolioClient ?? postgres(connectionString, { max: 10 });
+  globalThis.__portofolioClient ??
+  postgres(connectionString, {
+    // Pooler transaction mode (Supabase 6543) tidak mendukung prepared statements.
+    prepare: false,
+    max: process.env.VERCEL ? 5 : 10,
+  });
 
 if (process.env.NODE_ENV !== "production") {
   globalThis.__portofolioClient = client;
