@@ -43,6 +43,13 @@
       "when": 1791232399103,
       "tag": "0005_stiff_kronos",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791242621096,
+      "tag": "0006_auto_generate_settings",
+      "breakpoints": true
     }
   ]
 }

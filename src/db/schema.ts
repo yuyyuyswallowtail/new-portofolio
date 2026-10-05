@@ -206,3 +206,19 @@ export type Education = typeof education.$inferSelect;
 export type Experience = typeof experiences.$inferSelect;
 export type Certification = typeof certifications.$inferSelect;
 export type SkillEntry = typeof skillEntries.$inferSelect;
+
+export const autoGenerateSettings = pgTable("auto_generate_settings", {
+  id: integer("id").primaryKey().default(1),
+  enabled: boolean("enabled").notNull().default(false),
+  intervalMinutes: integer("interval_minutes").notNull().default(480),
+  autoPublish: boolean("auto_publish").notNull().default(false),
+  testRunsLeft: integer("test_runs_left").notNull().default(0),
+  nextRunAt: timestamp("next_run_at"),
+  lastRunAt: timestamp("last_run_at"),
+  lastStatus: text("last_status"),
+  lastMessage: text("last_message"),
+  lockedUntil: timestamp("locked_until"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}).enableRLS();
+
+export type AutoGenerateSettings = typeof autoGenerateSettings.$inferSelect;

@@ -1,16 +1,18 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
-import { rateLimit } from "@/lib/rate-limit";
-import { runAutoGenerate } from "@/modules/articles/service";
+import { claimDue, runClaimed } from "@/modules/autogen/service";
 
 export const runtime = "nodejs";
-// Generate artikel + gambar bisa lama. 60 detik adalah batas aman di plan Hobby.
+// Generate artikel + gambar bisa lama (sekitar 3 menit).
 export const maxDuration = 300;
 
 /**
- * Dipanggil oleh Vercel Cron (GET + header `Authorization: Bearer <CRON_SECRET>`)
- * atau oleh service `cron` di docker-compose (POST + header `x-cron-secret`).
- * Auth memakai shared secret, bukan session user. Tidak ada header CORS.
+ * Ticker: dipanggil tiap menit (Vercel Cron di plan Pro, atau pg_cron di
+ * Supabase) dengan GET + `Authorization: Bearer <CRON_SECRET>`, atau POST +
+ * header `x-cron-secret`. Route ini TIDAK selalu membangkitkan artikel: ia
+ * hanya jalan kalau pengaturan di database aktif dan waktunya sudah tiba, dan
+ * kunci atomik di database mencegah dua proses berjalan bersamaan.
+ * Responsnya 202 segera; pekerjaan berat lanjut lewat after().
  */
 async function handle(request: Request) {
   const secret = process.env.CRON_SECRET;
@@ -33,24 +35,23 @@ async function handle(request: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  // Catatan: rate limit ini in-memory, jadi hanya efektif per instance.
-  // Di serverless ia hanya jaring pengaman tambahan, bukan jaminan.
-  const limit = rateLimit("cron-generate-article", {
-    limit: 1,
-    windowMs: 25 * 60 * 1000,
+  let claimed: Awaited<ReturnType<typeof claimDue>>;
+  try {
+    claimed = await claimDue();
+  } catch (err) {
+    logger.error("autogen_claim_failed", { error: (err as Error).message });
+    return NextResponse.json({ error: "claim_failed" }, { status: 500 });
+  }
+  if (!claimed) return NextResponse.json({ ok: true, skipped: true });
+
+  after(async () => {
+    try {
+      await runClaimed(claimed);
+    } catch (err) {
+      logger.error("autogen_tick_failed", { error: (err as Error).message });
+    }
   });
-  if (!limit.ok) {
-    logger.warn("cron_generate_rate_limited");
-    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
-  }
-
-  const publish = process.env.CRON_AUTO_PUBLISH === "true";
-  const result = await runAutoGenerate({ publish, triggeredBy: "cron" });
-
-  if (!result.ok) {
-    return NextResponse.json({ error: result.error }, { status: 502 });
-  }
-  return NextResponse.json({ ok: true, ...result.data });
+  return NextResponse.json({ ok: true, started: true }, { status: 202 });
 }
 
 export const GET = handle;
