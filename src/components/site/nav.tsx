@@ -6,12 +6,9 @@ import Link from "next/link";
 import { useState } from "react";
 import { ThemeToggle } from "./theme-toggle";
 
-// Urutan mengikuti urutan section di beranda.
 const LINKS = [
-  { href: "/#about", label: "About" },
-  { href: "/#experience", label: "Experience" },
-  { href: "/#projects", label: "Work" },
-  { href: "/#skills", label: "Skills" },
+  { href: "/", label: "Home" },
+  { href: "/projects", label: "Projects" },
   { href: "/articles", label: "Articles" },
 ];
 
