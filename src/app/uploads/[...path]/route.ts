@@ -4,8 +4,11 @@ import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
+// Hanya dipakai untuk mode lokal/Docker. Di Vercel upload memakai Supabase Storage.
 const UPLOAD_ROOT = path.resolve(
-  process.env.UPLOAD_DIR ?? path.join(process.cwd(), "public", "uploads"),
+  /*turbopackIgnore: true*/
+  process.env.UPLOAD_DIR ??
+    path.join(/*turbopackIgnore: true*/ process.cwd(), "public", "uploads"),
 );
 
 const MIME: Record<string, string> = {
@@ -31,7 +34,8 @@ export async function GET(
 
   try {
     const file = await readFile(filePath);
-    const type = MIME[path.extname(filePath).toLowerCase()] ?? "application/octet-stream";
+    const type =
+      MIME[path.extname(filePath).toLowerCase()] ?? "application/octet-stream";
     return new NextResponse(file, {
       headers: {
         "Content-Type": type,
