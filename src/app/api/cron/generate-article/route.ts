@@ -4,16 +4,15 @@ import { rateLimit } from "@/lib/rate-limit";
 import { runAutoGenerate } from "@/modules/articles/service";
 
 export const runtime = "nodejs";
+// Generate artikel + gambar bisa lama. 60 detik adalah batas aman di plan Hobby.
+export const maxDuration = 60;
 
 /**
- * Called by the `cron` service in docker-compose.yml on a schedule (see
- * CRON_SCHEDULE_HOURS in .env). Auth is a shared secret header, not a user
- * session — this route is never meant to be hit from a browser, so no CORS
- * headers are set (default same-origin-only is irrelevant for server-to-
- * server calls, and we don't want to accidentally make this browser-callable
- * from another origin).
+ * Dipanggil oleh Vercel Cron (GET + header `Authorization: Bearer <CRON_SECRET>`)
+ * atau oleh service `cron` di docker-compose (POST + header `x-cron-secret`).
+ * Auth memakai shared secret, bukan session user. Tidak ada header CORS.
  */
-export async function POST(request: Request) {
+async function handle(request: Request) {
   const secret = process.env.CRON_SECRET;
   if (!secret) {
     logger.error("cron_generate_misconfigured", {
@@ -25,15 +24,17 @@ export async function POST(request: Request) {
     );
   }
 
-  const provided = request.headers.get("x-cron-secret");
+  const auth = request.headers.get("authorization");
+  const provided =
+    request.headers.get("x-cron-secret") ??
+    (auth?.startsWith("Bearer ") ? auth.slice(7) : null);
   if (provided !== secret) {
     logger.warn("cron_generate_unauthorized");
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  // Extra safety net even though the secret already gates this: a
-  // misconfigured crontab (e.g. "every minute" instead of "every N hours")
-  // should not be able to burn through the Gemini quota.
+  // Catatan: rate limit ini in-memory, jadi hanya efektif per instance.
+  // Di serverless ia hanya jaring pengaman tambahan, bukan jaminan.
   const limit = rateLimit("cron-generate-article", {
     limit: 1,
     windowMs: 25 * 60 * 1000,
@@ -51,3 +52,6 @@ export async function POST(request: Request) {
   }
   return NextResponse.json({ ok: true, ...result.data });
 }
+
+export const GET = handle;
+export const POST = handle;

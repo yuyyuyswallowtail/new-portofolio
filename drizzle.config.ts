@@ -5,6 +5,7 @@ export default defineConfig({
   out: "./drizzle",
   dialect: "postgresql",
   dbCredentials: {
-    url: process.env.DATABASE_URL as string,
+    // Migrasi lewat koneksi langsung (5432); runtime memakai pooler (6543).
+    url: (process.env.DIRECT_URL ?? process.env.DATABASE_URL) as string,
   },
 });

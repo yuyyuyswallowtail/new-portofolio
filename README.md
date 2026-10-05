@@ -94,7 +94,7 @@ Catatan driver: pooler transaction mode tidak mendukung prepared statements. Pad
 ### 3. Siapkan Storage
 
 1. Buka **Storage → New bucket**, beri nama `uploads`, centang **Public bucket**
-   (gambar artikel dan sertifikat perlu bisa dibaca publik).
+   (gambar artikel perlu bisa dibaca publik). Batas upload 4MB karena limit body Vercel.
 2. Upload dilakukan dari server memakai service role key, jadi tidak perlu policy
    tulis untuk anon.
 3. Pindahkan aset yang sudah ada di `public/certificates`, `public/profile.jpg`, dan
@@ -107,8 +107,7 @@ URL publik objek berbentuk:
 https://<project-ref>.supabase.co/storage/v1/object/public/uploads/<path>
 ```
 
-Tambahkan host Supabase ke `images.remotePatterns` di `next.config.ts` supaya
-`next/image` boleh memuatnya:
+`next.config.ts` otomatis mengizinkan host dari `NEXT_PUBLIC_SUPABASE_URL` untuk `next/image`. Contoh konfigurasinya:
 
 ```ts
 images: {
@@ -146,9 +145,9 @@ Container `cron` di Docker tidak dipakai di Vercel. Gunakan Vercel Cron lewat `v
 }
 ```
 
-Vercel mengirim header `Authorization: Bearer <CRON_SECRET>` jika variabel
-`CRON_SECRET` diisi. Pastikan route `/api/cron/generate-article` memverifikasi header
-itu. Di plan Hobby, cron hanya boleh berjalan sekali sehari, dan satu eksekusi dibatasi
+Vercel mengirim `GET` dengan header `Authorization: Bearer <CRON_SECRET>` jika
+`CRON_SECRET` diisi. Route `/api/cron/generate-article` menerima header itu, dan juga
+`POST` dengan `x-cron-secret` untuk Docker. Jadwal ada di `vercel.json`. Di plan Hobby, cron hanya boleh berjalan sekali sehari, dan satu eksekusi dibatasi
 durasi function. Generate gambar AI yang lambat bisa melewati batas itu, jadi biarkan
 `GEMINI_IMAGE_ENABLED=false` jika terjadi timeout.
 

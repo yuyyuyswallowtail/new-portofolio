@@ -15,16 +15,57 @@ const ALLOWED_TYPES: Record<string, string> = {
   "image/webp": "webp",
   "image/gif": "gif",
 };
-const MAX_BYTES = 5 * 1024 * 1024; // 5MB
+// Vercel menolak body request > 4,5MB, jadi batasnya 4MB.
+const MAX_BYTES = 4 * 1024 * 1024;
 
-const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "articles");
+const LOCAL_DIR = path.join(process.cwd(), "public", "uploads", "articles");
+
+function supabaseConfig() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  return {
+    base: url.replace(/\/$/, ""),
+    key,
+    bucket: process.env.SUPABASE_BUCKET ?? "uploads",
+  };
+}
+
+async function saveToSupabase(
+  cfg: NonNullable<ReturnType<typeof supabaseConfig>>,
+  filename: string,
+  contentType: string,
+  buffer: Buffer,
+): Promise<string | null> {
+  const objectPath = `articles/${filename}`;
+  const res = await fetch(
+    `${cfg.base}/storage/v1/object/${cfg.bucket}/${objectPath}`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${cfg.key}`,
+        apikey: cfg.key,
+        "Content-Type": contentType,
+        "cache-control": "max-age=31536000",
+      },
+      body: new Uint8Array(buffer),
+    },
+  );
+  if (!res.ok) {
+    logger.error("upload_supabase_failed", {
+      status: res.status,
+      body: await res.text().catch(() => ""),
+    });
+    return null;
+  }
+  return `${cfg.base}/storage/v1/object/public/${cfg.bucket}/${objectPath}`;
+}
 
 /**
- * Local filesystem upload (see docker-compose.yml — `uploads_data` volume
- * keeps this across container rebuilds). Used by the Tiptap editor's image
- * button and the article cover/thumbnail field. Auth + size/MIME validation
- * happen server-side (SECURITY.md §3) — the <input accept> attribute on the
- * client is a UX hint only, never trusted.
+ * Upload gambar (Tiptap + cover artikel). Dengan env Supabase terisi, file
+ * disimpan di Supabase Storage (wajib di Vercel). Tanpa itu, jatuh ke disk
+ * lokal (Docker Compose, volume `uploads_data`). Auth dan validasi
+ * ukuran/MIME tetap di server (SECURITY.md §3).
  */
 export async function POST(request: Request) {
   const user = await getCurrentUser();
@@ -44,7 +85,10 @@ export async function POST(request: Request) {
   try {
     formData = await request.formData();
   } catch {
-    return NextResponse.json({ error: "expected multipart/form-data" }, { status: 400 });
+    return NextResponse.json(
+      { error: "expected multipart/form-data" },
+      { status: 400 },
+    );
   }
   const file = formData.get("file");
   if (!(file instanceof File)) {
@@ -60,7 +104,7 @@ export async function POST(request: Request) {
   }
   if (file.size > MAX_BYTES) {
     return NextResponse.json(
-      { error: "file too large (max 5MB)" },
+      { error: "file too large (max 4MB)" },
       { status: 400 },
     );
   }
@@ -68,10 +112,25 @@ export async function POST(request: Request) {
   const buffer = Buffer.from(await file.arrayBuffer());
   const filename = `${randomUUID()}.${ext}`;
 
-  await mkdir(UPLOAD_DIR, { recursive: true });
-  await writeFile(path.join(UPLOAD_DIR, filename), buffer);
+  let url: string | null;
+  const cfg = supabaseConfig();
+  if (cfg) {
+    url = await saveToSupabase(cfg, filename, file.type, buffer);
+    if (!url) {
+      return NextResponse.json({ error: "storage_failed" }, { status: 502 });
+    }
+  } else if (process.env.VERCEL) {
+    logger.error("upload_misconfigured", { reason: "Supabase env not set" });
+    return NextResponse.json(
+      { error: "storage_not_configured" },
+      { status: 500 },
+    );
+  } else {
+    await mkdir(LOCAL_DIR, { recursive: true });
+    await writeFile(path.join(LOCAL_DIR, filename), buffer);
+    url = `/uploads/articles/${filename}`;
+  }
 
-  const url = `/uploads/articles/${filename}`;
   logger.info("upload_success", { userId: user.id, url, size: file.size });
   return NextResponse.json({ url });
 }
