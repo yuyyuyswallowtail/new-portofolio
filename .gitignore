@@ -11,3 +11,4 @@ public/uploads
 
 .env.*
 !.env.example
+tsconfig.tsbuildinfo

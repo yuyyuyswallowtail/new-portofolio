@@ -1,14 +1,16 @@
-// Inline, synchronous, pre-hydration script — reads the saved theme and sets
-// data-theme on <html> BEFORE paint, so there's no flash-of-wrong-theme.
-// Deliberately not a React component: it has to run before React even loads.
+// Inline, synchronous, pre-hydration script — membaca tema tersimpan dan mengatur
+// data-theme di <html> SEBELUM paint, supaya tidak ada flash tema yang salah.
+// Default (belum ada pilihan) = terang. "system" = tanpa atribut, media query
+// di globals.css yang menentukan.
 const THEME_SCRIPT = `
 (function () {
   try {
     var saved = localStorage.getItem("theme");
-    if (saved === "light" || saved === "dark") {
-      document.documentElement.setAttribute("data-theme", saved);
+    if (saved === "system") {
+      document.documentElement.removeAttribute("data-theme");
+    } else {
+      document.documentElement.setAttribute("data-theme", saved === "dark" ? "dark" : "light");
     }
-    // "system" (or unset) — no attribute, globals.css media query handles it.
   } catch (e) {}
 })();
 `;
