@@ -1,5 +1,6 @@
 "use client";
 
+import { useMotionValueEvent, useScroll } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -7,61 +8,81 @@ import { ThemeToggle } from "./theme-toggle";
 
 const LINKS = [
   { href: "/#about", label: "About" },
+  { href: "/#projects", label: "Work" },
+  { href: "/#skills", label: "Skills" },
   { href: "/#experience", label: "Experience" },
-  { href: "/#projects", label: "Projects" },
   { href: "/articles", label: "Articles" },
 ];
 
-// Contact lives in the footer now (every page), not as its own nav item/page —
-// and no /login link here either, see SECURITY.md + footer.tsx.
 export function SiteNav() {
   const [open, setOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const { scrollY } = useScroll();
+
+  useMotionValueEvent(scrollY, "change", (latest) => {
+    setScrolled(latest > 24);
+  });
 
   return (
-    <header className="sticky top-0 z-20 border-b border-line bg-bg/80 backdrop-blur">
-      <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-5 sm:px-6">
+    <header
+      className={`sticky top-0 z-30 border-b transition-[background-color,border-color,backdrop-filter] duration-300 motion-reduce:transition-none ${
+        scrolled || open
+          ? "border-line bg-bg/50 backdrop-blur-xl backdrop-saturate-150"
+          : "border-transparent bg-transparent"
+      }`}
+    >
+      <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
         <Link
           href="/"
-          className="font-data text-sm tracking-tight text-ink hover:text-accent"
+          className="text-lg font-extrabold uppercase tracking-tight"
         >
-          BINTANG<span className="text-accent">.</span>MESIR
+          Bintang<span className="text-block-yellow">.</span>Mesir
         </Link>
         <div className="flex items-center gap-3 sm:gap-6">
-          <div className="hidden items-center gap-8 text-sm md:flex">
+          <div className="hidden items-center gap-7 text-sm font-medium lg:flex">
             {LINKS.map((l) => (
               <Link
                 key={l.href}
                 href={l.href}
-                className="text-ink-muted hover:text-ink"
+                className="text-ink-muted transition-colors hover:text-ink"
               >
                 {l.label}
               </Link>
             ))}
           </div>
+          <Link
+            href="/#contact-footer"
+            className="pill pill-accent pill-sm hidden sm:inline-flex"
+          >
+            Contact
+          </Link>
           <ThemeToggle />
           <button
             type="button"
-            className="flex h-8 w-8 items-center justify-center rounded-[6px] border border-line text-ink-muted md:hidden"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-line text-ink-muted lg:hidden"
             onClick={() => setOpen((v) => !v)}
             aria-label="Toggle menu"
+            aria-expanded={open}
           >
             {open ? <X size={16} /> : <Menu size={16} />}
           </button>
         </div>
       </nav>
       {open && (
-        <div className="border-t border-line px-4 py-4 md:hidden">
-          <div className="flex flex-col gap-4 text-sm">
+        <div className="border-t border-line px-4 py-5 lg:hidden">
+          <div className="flex flex-col gap-4 text-lg font-semibold">
             {LINKS.map((l) => (
-              <Link
-                key={l.href}
-                href={l.href}
-                className="text-ink-muted hover:text-ink"
-                onClick={() => setOpen(false)}
-              >
+              <Link key={l.href} href={l.href} onClick={() => setOpen(false)}>
                 {l.label}
               </Link>
             ))}
+            <Link
+              href="/#contact-footer"
+              onClick={() => setOpen(false)}
+              className="pill pill-accent mt-2 w-fit"
+            >
+              Contact
+            </Link>
           </div>
         </div>
       )}
