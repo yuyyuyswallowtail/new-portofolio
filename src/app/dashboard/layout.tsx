@@ -9,8 +9,9 @@ import { getDashboardAnalytics } from "@/modules/analytics/service";
 import { logoutAction } from "@/modules/auth/actions";
 import { pendingCount as pendingCommentCount } from "@/modules/comments/service";
 
-// Gagal cepat kalau ada query yang menggantung (default Vercel 300 detik).
-export const maxDuration = 30;
+// Berlaku juga untuk server action di bawah /dashboard (generate artikel AI +
+// cover image bisa lebih dari 30 detik). Tetap lebih pendek dari default 300 detik.
+export const maxDuration = 120;
 
 export default async function DashboardLayout({
   children,
