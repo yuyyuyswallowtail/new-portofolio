@@ -66,7 +66,7 @@ export default async function HomePage() {
     listCertifications(owner.id),
     listSkills(owner.id),
     listProjects(owner.id),
-    listRecentForHome(3),
+    listRecentForHome(6),
   ]);
 
   const homeProjects = projects.slice(0, HOME_PROJECT_LIMIT);
