@@ -8,12 +8,12 @@ import { HeroSection } from "@/components/site/hero-section";
 import { Marquee } from "@/components/site/marquee";
 import {
   ActiveOnScroll,
-  ClipReveal,
   CountUp,
   Stagger,
   StaggerItem,
 } from "@/components/site/motion";
 import { SiteNav } from "@/components/site/nav";
+import { ProjectCard } from "@/components/site/project-card";
 import { Reveal } from "@/components/site/reveal";
 import { SectionHeading } from "@/components/site/section-heading";
 import { StackSection } from "@/components/site/stack-section";
@@ -30,63 +30,8 @@ import {
 
 export const dynamic = "force-dynamic";
 
-type Project = Awaited<ReturnType<typeof listProjects>>[number];
-
-function ProjectCard({ p, i }: { p: Project; i: number }) {
-  const href = p.liveUrl || p.repoUrl || undefined;
-  const body = (
-    <>
-      <ClipReveal>
-        <div
-          className={cn(
-            "relative aspect-[4/3] overflow-hidden rounded-[28px] text-on-block",
-            blockClass(i),
-          )}
-        >
-          {p.imageUrl ? (
-            // biome-ignore lint/performance/noImgElement: gambar project bisa berupa upload lokal, optimasi next/image tidak penting di sini
-            <img
-              src={p.imageUrl}
-              alt={p.title}
-              loading="lazy"
-              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-            />
-          ) : (
-            <span className="absolute inset-0 grid place-items-center text-8xl font-extrabold tracking-tighter opacity-80">
-              {String(i + 1).padStart(2, "0")}
-            </span>
-          )}
-          {p.featured && (
-            <span className="font-data absolute left-4 top-4 rounded-full bg-bg px-3 py-1 text-xs text-ink">
-              featured
-            </span>
-          )}
-        </div>
-      </ClipReveal>
-      <div className="mt-4 flex items-start justify-between gap-4">
-        <h3 className="text-2xl font-semibold tracking-tight group-hover:underline">
-          {p.title}
-        </h3>
-        <span className="chip shrink-0 text-ink-muted">{p.source}</span>
-      </div>
-      {p.description && (
-        <p className="mt-2 line-clamp-2 text-ink-muted">{p.description}</p>
-      )}
-      <p className="font-data mt-3 text-xs text-accent-strong">
-        {p.repoUrl && "repo ↗  "}
-        {p.liveUrl && "live ↗"}
-      </p>
-    </>
-  );
-
-  return href ? (
-    <a href={href} target="_blank" rel="noreferrer" className="group block">
-      {body}
-    </a>
-  ) : (
-    <div className="group block">{body}</div>
-  );
-}
+// Jumlah project di home. Sisanya ada di /projects.
+const HOME_PROJECT_LIMIT = 6;
 
 export default async function HomePage() {
   const owner = await getOwnerProfile();
@@ -122,6 +67,8 @@ export default async function HomePage() {
     listProjects(owner.id),
     listRecentForHome(3),
   ]);
+
+  const homeProjects = projects.slice(0, HOME_PROJECT_LIMIT);
 
   const skillsByCategory = skills.reduce<Record<string, typeof skills>>(
     (acc, s) => {
@@ -188,7 +135,9 @@ export default async function HomePage() {
     <>
       <SiteNav />
       {/* Semua section dan footer adalah sibling langsung di <main>:
-          syarat agar efek "ditutupi section berikutnya" (sticky) bekerja. */}
+          syarat agar efek "ditutupi section berikutnya" (sticky) bekerja.
+          Urutan: Hero, About, Education, Experience, By the numbers,
+          Projects, Certifications, Skills, Articles, lalu footer (Contact). */}
       <main>
         <StackSection index={0} id="top" bare>
           <HeroSection
@@ -201,28 +150,9 @@ export default async function HomePage() {
           <Marquee items={skills.slice(0, 24).map((s) => s.name)} />
         </StackSection>
 
-        {/* ---------- Projects ---------- */}
-        <StackSection index={1} id="projects" tone="surface">
-          <SectionHeading
-            index={1}
-            title="Selected projects"
-            kicker="Selected work"
-          />
-          <Stagger className="grid grid-cols-1 gap-x-6 gap-y-14 md:grid-cols-2">
-            {projects.map((p, i) => (
-              <StaggerItem key={p.id}>
-                <ProjectCard p={p} i={i} />
-              </StaggerItem>
-            ))}
-            {projects.length === 0 && (
-              <p className="text-sm text-ink-muted">Belum ada project.</p>
-            )}
-          </Stagger>
-        </StackSection>
-
         {/* ---------- About ---------- */}
-        <StackSection index={2} id="about">
-          <SectionHeading index={2} title="About me" kicker="About" />
+        <StackSection index={1} id="about">
+          <SectionHeading index={1} title="About me" kicker="About" />
           <Stagger gap={0.12}>
             {bioParas[0] && (
               <StaggerItem>
@@ -268,48 +198,40 @@ export default async function HomePage() {
           </Stagger>
         </StackSection>
 
-        {/* ---------- Skills ---------- */}
-        {skillItems.length > 0 && (
-          <StackSection index={3} id="skills" tone="surface">
-            <SectionHeading
-              index={3}
-              title="What I work with"
-              kicker="Skills"
-            />
-            <Reveal>
-              <Accordion items={skillItems} />
-            </Reveal>
-          </StackSection>
-        )}
-
-        {/* ---------- Stats ---------- */}
-        {stats.length > 0 && (
-          <StackSection index={4}>
-            <SectionHeading index={4} title="By the numbers" kicker="Impact" />
-            <Stagger className="grid grid-cols-2 gap-4 md:grid-cols-4">
-              {stats.map((s, i) => (
-                <StaggerItem key={s.label}>
-                  <div
-                    className={cn(
-                      "flex min-h-48 flex-col justify-between rounded-[28px] p-6 text-on-block",
-                      blockClass(i + 1),
+        {/* ---------- Education ---------- */}
+        {education.length > 0 && (
+          <StackSection index={2} id="education" tone="surface">
+            <SectionHeading index={2} title="Education" />
+            <div className="border-b border-line">
+              {education.map((e) => (
+                <ActiveOnScroll key={e.id}>
+                  <div className="grid gap-3 border-t border-line py-7 md:grid-cols-[200px_1fr_auto] md:gap-8">
+                    <p className="font-data text-xs text-ink-muted">
+                      {formatDate(e.startDate)} —{" "}
+                      {e.endDate ? formatDate(e.endDate) : "now"}
+                    </p>
+                    <div>
+                      <h3 className="text-2xl font-semibold tracking-tight md:text-3xl">
+                        {e.degree ?? e.institution}
+                      </h3>
+                      <p className="mt-1 text-ink-muted">{e.institution}</p>
+                    </div>
+                    {e.gpa && (
+                      <span className="chip h-fit self-start text-ink-muted">
+                        GPA {e.gpa}
+                      </span>
                     )}
-                  >
-                    <span className="font-data text-xs uppercase tracking-widest opacity-70">
-                      {s.label}
-                    </span>
-                    <CountUp value={s.value} className="display-lg" />
                   </div>
-                </StaggerItem>
+                </ActiveOnScroll>
               ))}
-            </Stagger>
+            </div>
           </StackSection>
         )}
 
         {/* ---------- Experience ---------- */}
-        <StackSection index={5} id="experience" tone="surface">
+        <StackSection index={3} id="experience">
           <SectionHeading
-            index={5}
+            index={3}
             title="Experience & training"
             kicker="Experience"
           />
@@ -341,45 +263,65 @@ export default async function HomePage() {
           </div>
         </StackSection>
 
-        {/* ---------- Education ---------- */}
-        {education.length > 0 && (
-          <StackSection index={6} id="education">
-            <SectionHeading index={6} title="Education" />
-            <div className="border-b border-line">
-              {education.map((e) => (
-                <ActiveOnScroll key={e.id}>
-                  <div className="grid gap-3 border-t border-line py-7 md:grid-cols-[200px_1fr_auto] md:gap-8">
-                    <p className="font-data text-xs text-ink-muted">
-                      {formatDate(e.startDate)} —{" "}
-                      {e.endDate ? formatDate(e.endDate) : "now"}
-                    </p>
-                    <div>
-                      <h3 className="text-2xl font-semibold tracking-tight md:text-3xl">
-                        {e.degree ?? e.institution}
-                      </h3>
-                      <p className="mt-1 text-ink-muted">{e.institution}</p>
-                    </div>
-                    {e.gpa && (
-                      <span className="chip h-fit self-start text-ink-muted">
-                        GPA {e.gpa}
-                      </span>
+        {/* ---------- Stats ---------- */}
+        {stats.length > 0 && (
+          <StackSection index={4} tone="surface">
+            <SectionHeading index={4} title="By the numbers" kicker="Impact" />
+            <Stagger className="grid grid-cols-2 gap-4 md:grid-cols-4">
+              {stats.map((s, i) => (
+                <StaggerItem key={s.label}>
+                  <div
+                    className={cn(
+                      "flex min-h-48 flex-col justify-between rounded-[28px] p-6 text-on-block",
+                      blockClass(i + 1),
                     )}
+                  >
+                    <span className="font-data text-xs uppercase tracking-widest opacity-70">
+                      {s.label}
+                    </span>
+                    <CountUp value={s.value} className="display-lg" />
                   </div>
-                </ActiveOnScroll>
+                </StaggerItem>
               ))}
-            </div>
+            </Stagger>
           </StackSection>
         )}
+
+        {/* ---------- Projects ---------- */}
+        <StackSection index={5} id="projects">
+          <SectionHeading
+            index={5}
+            title="Selected projects"
+            kicker="Selected work"
+          />
+          <Stagger className="grid grid-cols-1 gap-x-6 gap-y-14 md:grid-cols-2">
+            {homeProjects.map((p, i) => (
+              <StaggerItem key={p.id}>
+                <ProjectCard p={p} i={i} />
+              </StaggerItem>
+            ))}
+            {projects.length === 0 && (
+              <p className="text-sm text-ink-muted">Belum ada project.</p>
+            )}
+          </Stagger>
+          {projects.length > 0 && (
+            <div className="mt-12">
+              <Link href="/projects" className="pill pill-outline">
+                View projects →
+              </Link>
+            </div>
+          )}
+        </StackSection>
 
         {/* ---------- Certifications ---------- */}
         {certifications.some((c) => c.imageUrl) && (
           <section
             id="certifications"
-            style={{ zIndex: 8 }}
+            style={{ zIndex: 7 }}
             className="relative rounded-t-[28px] bg-surface shadow-[0_-24px_48px_-28px_rgb(0_0_0/0.35)] md:rounded-t-[40px]"
           >
             <CertGallery
-              index={7}
+              index={6}
               items={certifications.flatMap((c) =>
                 c.imageUrl
                   ? [
@@ -397,9 +339,23 @@ export default async function HomePage() {
           </section>
         )}
 
+        {/* ---------- Skills ---------- */}
+        {skillItems.length > 0 && (
+          <StackSection index={7} id="skills">
+            <SectionHeading
+              index={7}
+              title="What I work with"
+              kicker="Skills"
+            />
+            <Reveal>
+              <Accordion items={skillItems} />
+            </Reveal>
+          </StackSection>
+        )}
+
         {/* ---------- Articles ---------- */}
         {recentArticles.length > 0 && (
-          <StackSection index={8} id="articles">
+          <StackSection index={8} id="articles" tone="surface">
             <SectionHeading
               index={8}
               title="Latest articles"
@@ -420,7 +376,7 @@ export default async function HomePage() {
           </StackSection>
         )}
 
-        {/* Footer menutup section terakhir dengan cara yang sama (z di bawah nav, z-30). */}
+        {/* Footer (Contact) menutup section terakhir dengan cara yang sama (z di bawah nav, z-30). */}
         <div className="footer-invert relative" style={{ zIndex: 20 }}>
           <SiteFooter />
         </div>
