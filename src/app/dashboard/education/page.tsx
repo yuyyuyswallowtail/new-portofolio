@@ -27,7 +27,8 @@ export default async function DashboardEducationPage() {
       <h1 className="text-2xl font-semibold">Education</h1>
       <p className="mt-1 text-sm text-ink-muted">
         Tampil di section Education di halaman public. Urutan mengikuti tombol
-        panah (atas = paling atas).
+        panah (atas = paling atas). Gambar institusi otomatis diperkecil ke
+        maksimal 640px dan langsung tersimpan setelah diunggah.
       </p>
       <EducationManager
         items={rows.map((e) => ({
@@ -38,6 +39,7 @@ export default async function DashboardEducationPage() {
           startDate: e.startDate,
           endDate: e.endDate,
           notes: e.notes,
+          imageUrl: e.imageUrl,
         }))}
       />
     </div>

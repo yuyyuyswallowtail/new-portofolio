@@ -21,11 +21,19 @@ function skip(pathname: string) {
   return SKIP.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
-function labelFor(pathname: string) {
+/**
+ * Label yang tampil di panel transisi untuk halaman tujuan. Rute yang belum
+ * didaftarkan memakai segmen pertama path-nya (huruf besar di awal), supaya
+ * panel tidak pernah kosong.
+ */
+function labelFor(pathname: string, hash = "") {
+  if (hash === "#contact-footer" || pathname === "/contact") return "Contact";
   if (pathname === "/") return "Home";
+  if (pathname === "/projects") return "Projects";
   if (pathname === "/articles") return "Articles";
   if (pathname.startsWith("/articles/")) return "Article";
-  return "";
+  const seg = pathname.split("/").filter(Boolean)[0];
+  return seg ? seg.charAt(0).toUpperCase() + seg.slice(1) : "";
 }
 
 /**
@@ -102,7 +110,7 @@ export function PageTransition({ children }: { children: ReactNode }) {
       e.stopPropagation();
       targetRef.current = `${url.pathname}${url.search}${url.hash}`;
       fromRef.current = window.location.pathname;
-      setLabel(labelFor(url.pathname));
+      setLabel(labelFor(url.pathname, url.hash));
       go("in");
     }
 

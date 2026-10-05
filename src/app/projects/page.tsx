@@ -4,7 +4,6 @@ import { SiteFooter } from "@/components/site/footer";
 import { Stagger, StaggerItem } from "@/components/site/motion";
 import { SiteNav } from "@/components/site/nav";
 import { ProjectCard } from "@/components/site/project-card";
-import { SectionHeading } from "@/components/site/section-heading";
 import { getOwnerProfile, listProjects } from "@/modules/content/repository";
 
 export const dynamic = "force-dynamic";
@@ -17,9 +16,14 @@ export default async function ProjectsPage() {
   return (
     <>
       <SiteNav />
-      <main className="mx-auto max-w-6xl px-6 pb-24 pt-28">
-        <SectionHeading index={1} title="All projects" kicker="Projects" />
-        <Stagger className="grid grid-cols-1 gap-x-6 gap-y-14 md:grid-cols-2">
+      <main className="mx-auto max-w-6xl px-6 py-14 md:py-20">
+        <p className="kicker">/ Work</p>
+        <h1 className="display-lg mt-3">Projects</h1>
+        <p className="mt-4 max-w-xl text-lg text-ink-muted">
+          Web apps, company profiles, and side projects.
+        </p>
+
+        <Stagger className="mt-10 grid grid-cols-1 gap-x-6 gap-y-14 md:grid-cols-2">
           {projects.map((p, i) => (
             <StaggerItem key={p.id}>
               <ProjectCard p={p} i={i} />
@@ -29,15 +33,14 @@ export default async function ProjectsPage() {
             <p className="text-sm text-ink-muted">Belum ada project.</p>
           )}
         </Stagger>
-        <div className="mt-12">
+
+        <div className="mt-14">
           <Link href="/" className="pill pill-outline">
             ← Back home
           </Link>
         </div>
       </main>
-      <div className="footer-invert relative">
-        <SiteFooter />
-      </div>
+      <SiteFooter />
     </>
   );
 }

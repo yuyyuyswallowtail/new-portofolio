@@ -103,12 +103,14 @@ export function CertGallery({
                     opacity: state === 0 ? 1 : 0.4,
                   }}
                 >
+                  {/* Shadow dan ring memakai warna "ink" yang berbalik mengikuti tema:
+                      bayangan gelap di tema terang, halo tipis di tema gelap. */}
                   {/* biome-ignore lint/performance/noImgElement: sertifikat bisa berupa upload lokal */}
                   <img
                     src={c.imageUrl}
                     alt={c.title}
                     loading="lazy"
-                    className="h-full w-full rounded-[10px] object-cover"
+                    className="h-full w-full rounded-[10px] object-cover shadow-2xl shadow-ink/30 ring-1 ring-ink/15"
                   />
                 </div>
               );

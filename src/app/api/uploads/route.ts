@@ -9,7 +9,7 @@ import { getCurrentUser } from "@/lib/session";
 
 export const runtime = "nodejs";
 
-type FolderName = "articles" | "skills";
+type FolderName = "articles" | "skills" | "education";
 type FolderConfig = {
   permission: Action;
   maxBytes: number;
@@ -37,7 +37,18 @@ const FOLDERS: Record<FolderName, FolderConfig> = {
     types: { "image/png": "png", "image/webp": "webp" },
     localDir: path.join(process.cwd(), "public", "uploads", "skills"),
   },
+  education: {
+    // Gambar institusi: sudah diperkecil di browser (maks 640px).
+    permission: "content.manage",
+    maxBytes: 1024 * 1024,
+    types: { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" },
+    localDir: path.join(process.cwd(), "public", "uploads", "education"),
+  },
 };
+
+function parseFolder(value: FormDataEntryValue | null): FolderName {
+  return value === "skills" || value === "education" ? value : "articles";
+}
 
 function sizeLabel(bytes: number) {
   return bytes >= 1024 * 1024
@@ -89,7 +100,8 @@ async function saveToSupabase(
 
 /**
  * Upload gambar. Field `folder` opsional: "articles" (default, Tiptap + cover
- * artikel) atau "skills" (logo skill, izin content.manage, maks 512KB).
+ * artikel), "skills" (logo skill, maks 512KB) atau "education" (gambar
+ * institusi, maks 1MB); dua terakhir butuh izin content.manage.
  * Dengan env Supabase terisi, file disimpan di Supabase Storage (wajib di
  * Vercel). Tanpa itu, jatuh ke disk lokal (Docker Compose, volume
  * `uploads_data`). Auth dan validasi ukuran/MIME tetap di server
@@ -119,8 +131,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const folder: FolderName =
-    formData.get("folder") === "skills" ? "skills" : "articles";
+  const folder = parseFolder(formData.get("folder"));
   const cfg = FOLDERS[folder];
   if (!can(user.role, cfg.permission)) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });

@@ -44,7 +44,7 @@ export function ThemeToggle() {
       onClick={cycle}
       title={`Theme: ${theme} (click to change)`}
       aria-label={`Theme: ${theme}. Click to change.`}
-      className="flex h-8 w-8 items-center justify-center rounded-[6px] border border-line text-ink-muted hover:border-accent hover:text-accent"
+      className="flex h-8 w-8 items-center justify-center rounded-[6px] border border-line text-ink hover:border-accent hover:text-accent"
     >
       <Icon size={15} />
     </button>

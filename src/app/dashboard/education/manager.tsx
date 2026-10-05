@@ -13,6 +13,7 @@ import {
   moveEducationAction,
   updateEducationAction,
 } from "@/modules/content/actions";
+import { EducationImageControl } from "./image-control";
 
 export type EducationItem = {
   id: string;
@@ -22,6 +23,7 @@ export type EducationItem = {
   startDate: string | null;
   endDate: string | null;
   notes: string | null;
+  imageUrl: string | null;
 };
 
 type FormState = {
@@ -228,6 +230,13 @@ export function EducationManager({ items }: { items: EducationItem[] }) {
                 {item.startDate ?? "?"} — {item.endDate ?? "now"}
                 {item.gpa ? ` · GPA ${item.gpa}` : ""}
               </p>
+              <div className="mt-3">
+                <EducationImageControl
+                  id={item.id}
+                  name={item.institution}
+                  imageUrl={item.imageUrl}
+                />
+              </div>
             </div>
             <div className="flex shrink-0 gap-2">
               <Button
