@@ -108,6 +108,29 @@ function getSectionText(lines: string[], headingIdx: number): string {
   return body.join(" ").replace(/\s+/g, " ").trim().slice(0, 700);
 }
 
+// Adegan fallback dan warna aksen per topik (dipakai kalau Gemini gagal/lambat).
+const TOPIC_LOOKS: { match: RegExp; scene: string; accent: string }[] = [
+  { match: /laravel|php|symfony|composer/i, scene: "a coral-red toolbox unfolding into neatly interlocking blocks", accent: "coral red" },
+  { match: /python|django|flask|fastapi|pandas/i, scene: "a coiled ribbon racing along a track beside a brass stopwatch", accent: "warm yellow" },
+  { match: /next\.?js|react|vue|svelte|frontend|webdev|css/i, scene: "a paper airplane carrying a stack of window panels across a speed gauge", accent: "sky blue" },
+  { match: /sql|postgres|database|supabase|redis|gamedev/i, scene: "a wall of labeled drawers sliding open one after another on rails", accent: "cobalt blue" },
+  { match: /privacy|ethics|compliance|liability|legal/i, scene: "a leather notebook closed with a small padlock on a desk beside a wooden gavel", accent: "rose pink" },
+  { match: /security|auth|encrypt|grapheneos|android/i, scene: "a heavy padlock being clamped shut by a mechanical arm over a phone-shaped slab", accent: "magenta" },
+  { match: /\bai\b|llm|machine learning|gemini|claude|gpt/i, scene: "a brass telescope aimed at a hand-drawn constellation on a chalkboard", accent: "violet" },
+  { match: /docker|kubernetes|devops|deploy|cloud|serverless/i, scene: "shipping containers stacked on a conveyor belt under a crane", accent: "emerald green" },
+  { match: /test|quality|benchmark|performance/i, scene: "a magnifying glass hovering over a row of stamped checklist tiles", accent: "orange" },
+];
+
+function topicLook(a: ArticleLike): { scene: string; palette: string } | null {
+  const hay = `${a.title} ${a.tags.join(" ")}`;
+  const t = TOPIC_LOOKS.find((x) => x.match.test(hay));
+  if (!t) return null;
+  return {
+    scene: t.scene,
+    palette: `dark background, ${t.accent} as the accent color, no text, no letters, no logos, no people`,
+  };
+}
+
 /**
  * Gemini membaca isi artikel dan menemukan SATU adegan konkret yang hanya
  * cocok dengan artikel itu, supaya hasilnya tidak seragam dan tidak literal.
@@ -147,10 +170,12 @@ Output only the prompt.`;
       error: (err as Error).message.slice(0, 300),
     });
   }
+  const look = topicLook(a);
   const base =
     described ??
+    look?.scene ??
     `a concrete symbolic scene about ${a.tags.slice(0, 3).join(", ")}`;
-  return `${base}. ${style}, ${PALETTE}`;
+  return `${base}. ${style}, ${look?.palette ?? PALETTE}`;
 }
 
 /**
