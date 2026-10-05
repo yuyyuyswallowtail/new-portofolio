@@ -16,9 +16,13 @@ if (!connectionString) {
 const client =
   globalThis.__portofolioClient ??
   postgres(connectionString, {
-    // Pooler transaction mode (Supabase 6543) tidak mendukung prepared statements.
+    // Aman untuk pooler transaction mode (Supabase 6543) maupun session mode (5432).
     prepare: false,
-    max: process.env.VERCEL ? 5 : 10,
+    // Serverless: pool kecil per instance, koneksi menganggur cepat dilepas.
+    max: process.env.VERCEL ? 3 : 10,
+    connect_timeout: 10,
+    idle_timeout: 20,
+    max_lifetime: 60 * 10,
   });
 
 if (process.env.NODE_ENV !== "production") {
