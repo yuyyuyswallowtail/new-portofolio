@@ -1,9 +1,7 @@
 # Bintang Mesir — Software Engineer & Web Developer
 
-Lulusan S1 Teknik Informatika dari Universitas Muhammadiyah Jakarta, bersertifikat
-Kompetensi BNSP sebagai Software Engineer. Portfolio + blog dengan RBAC, admin
-dashboard lengkap (sidebar, analytics, WYSIWYG editor, AI article generation +
-regenerate, comments), dan auto-generate artikel terjadwal.
+Portfolio + blog dengan RBAC, admin dashboard (sidebar, analytics, WYSIWYG editor,
+AI article generation, comments), dan auto-generate artikel terjadwal.
 
 📧 bintangmsr@gmail.com · 🔗 [linkedin.com/in/bintang-mesir](https://linkedin.com/in/bintang-mesir) · 🐙 [github.com/yuyyuyswallowtail](https://github.com/yuyyuyswallowtail)
 
@@ -11,65 +9,176 @@ regenerate, comments), dan auto-generate artikel terjadwal.
 
 ## Stack
 
-Next.js 16 · Drizzle + Postgres (RLS) · Tiptap (WYSIWYG) · Three.js + Framer Motion ·
-Gemini 3.8 Flash + 3.1 Flash Image · Docker Compose (app + db + cron)
+Next.js 16 · Bun · Drizzle ORM + Postgres (RLS) · Supabase (Postgres + Storage) ·
+Tiptap (WYSIWYG) · Three.js + Rapier + Framer Motion · Gemini (model dikonfigurasi lewat env) ·
+Deploy: Vercel
 
-## What's new in this round
+## Fitur
 
-- **Contact folded into the global footer** (every page), no longer a separate
-  nav item/page. Staff login link lives in the footer too (small, not in main nav).
-- **Admin sidebar** (replacing the old top nav) — Overview/Articles/Profile/Users/System.
-- **WYSIWYG editor (Tiptap)** for articles — bold/italic/headings/lists/quote/code/link,
-  **multiple image uploads** inline in the content, plus a separate **cover/thumbnail**
-  upload field. Uploads go to `public/uploads/articles/` (persisted via the
-  `uploads_data` Docker volume).
-- **Article edit page** (`/dashboard/articles/[id]/edit`) — every article now has a
-  proper Edit flow, not just Publish/Delete. AI-generated articles also get a
-  **"Regenerate with AI"** button where you describe what to fix and Gemini rewrites
-  the draft in place.
-- AI-generated drafts now redirect straight to the edit page after generation, so
-  review/edit is the natural next step instead of an extra click.
-- **Comments** on published articles — public name+message form (honeypot +
-  rate-limited anti-spam), staff can delete from the article page itself.
-- Article content is now stored as **sanitized HTML** (Tiptap's native format) instead
-  of raw Markdown — AI-generated Markdown is converted once at save time. Proper
-  `@tailwindcss/typography` styling (`prose`) fixes paragraph spacing; article page is
-  now responsive on mobile (nav got a hamburger menu too — it had none before).
-- **Favicon** (`src/app/icon.svg`) — the old repo only had Next.js's default one.
-- Hero + Projects section visually elevated (bigger display type, image-forward
-  project cards) — still not a pixel-perfect clone of any reference site, but a clear
-  step up from the plain version.
-- **Bug fix:** a malformed/stale session cookie used to crash every page with a 500
-  (Postgres rejecting an invalid UUID). Now treated as "logged out", as it should be.
-- `seed:admin` defaults: `bintangmsr@gmail.com` / `20200410700101` (change
-  `ADMIN_PASSWORD` in `.env` before running in anything but local dev).
-- Profile page can now edit **email** too (uniqueness-checked).
+- **Home (design v2):** hero dengan lanyard 3D interaktif dan efek layar CRT, section
+  bertumpuk (stacked), navbar sticky dengan efek kaca, galeri sertifikat horizontal,
+  footer dengan tema terbalik dan ornamen komputer retro.
+- **Artikel:** editor Tiptap, upload gambar inline + cover, edit/regenerate dengan AI,
+  komentar publik (honeypot + rate limit) dengan moderasi.
+- **Dashboard:** sidebar yang bisa di-collapse, analytics, manajemen artikel, komentar,
+  profil, pengguna, dan konten portfolio.
+- **Auth:** session cookie, RBAC (staff/editor/viewer), RLS di Postgres.
+- **Auto-generate artikel** terjadwal lewat endpoint cron.
 
-## Quick start (Docker)
+## Development lokal
 
 ```bash
-cd portofolio
-cp .env.example .env   # fill GEMINI_API_KEY, change CRON_SECRET + ADMIN_PASSWORD
+bun install
+cp .env.example .env.local   # isi sesuai bagian "Environment variables"
+bun run db:migrate
+psql "$DIRECT_URL" -f src/db/policies.sql
+bun run seed:admin
+bun run seed:content
+bun run dev
+```
+
+Buka http://localhost:3000. Login staff ada di `/login` (tautannya kecil di footer,
+lihat `SECURITY.md`).
+
+## Environment variables
+
+| Variable | Keterangan |
+| --- | --- |
+| `DATABASE_URL` | Supabase pooler, port **6543** (transaction mode). Dipakai aplikasi saat runtime |
+| `DIRECT_URL` | Supabase pooler, port **5432** (session mode). Dipakai migrasi dan seed |
+| `NEXT_PUBLIC_SUPABASE_URL` | `https://<project-ref>.supabase.co` |
+| `SUPABASE_SERVICE_ROLE_KEY` | Hanya server. Dipakai untuk upload ke Storage |
+| `SUPABASE_BUCKET` | Nama bucket Storage, mis. `uploads` |
+| `SESSION_COOKIE_NAME` | Default `portofolio_session` |
+| `SESSION_TTL_DAYS` | Default `7` |
+| `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_NAME` | Dipakai `seed:admin`. Ganti password default |
+| `CRON_SECRET` | String acak panjang untuk melindungi endpoint cron |
+| `GEMINI_API_KEY` | Dari https://aistudio.google.com/app/apikey |
+| `GEMINI_TEXT_MODEL` | Mis. `gemini-3.5-flash-lite` |
+| `GEMINI_TEXT_FALLBACK_MODELS` | Daftar model cadangan, dipisah koma |
+| `GEMINI_IMAGE_ENABLED` | `true` / `false` |
+
+Jangan pernah commit `.env` atau `.env.local`. Hanya variabel berawalan `NEXT_PUBLIC_`
+yang boleh sampai ke browser. Service role key dan secret key harus tetap di server.
+
+## Deploy ke Vercel + Supabase
+
+Filesystem Vercel bersifat read-only dan tidak persisten, jadi upload tidak bisa lagi
+ditulis ke `public/uploads/`. Semua upload (cover, gambar artikel, foto profil, CV)
+disimpan di **Supabase Storage**.
+
+### 1. Buat project Supabase
+
+1. Buat project di https://supabase.com/dashboard, pilih region terdekat (mis. Singapore).
+2. Buka **Connect** dan salin dua connection string pooler:
+   - **Transaction pooler** (port 6543) untuk `DATABASE_URL`
+   - **Session pooler** (port 5432) untuk `DIRECT_URL`
+3. Buka **Settings → API** dan salin Project URL serta service role key.
+
+### 2. Siapkan database
+
+Jalankan dari mesin lokal dengan `.env.local` yang menunjuk ke Supabase:
+
+```bash
+bun run db:migrate
+psql "$DIRECT_URL" -f src/db/policies.sql
+bun run seed:admin
+bun run seed:content
+```
+
+Alternatif untuk `policies.sql`: tempel isinya di **SQL Editor** Supabase.
+
+Catatan driver: pooler transaction mode tidak mendukung prepared statements. Pada
+`postgres` (postgres-js), buat client dengan `postgres(url, { prepare: false })`.
+
+### 3. Siapkan Storage
+
+1. Buka **Storage → New bucket**, beri nama `uploads`, centang **Public bucket**
+   (gambar artikel dan sertifikat perlu bisa dibaca publik).
+2. Upload dilakukan dari server memakai service role key, jadi tidak perlu policy
+   tulis untuk anon.
+3. Pindahkan aset yang sudah ada di `public/certificates`, `public/profile.jpg`, dan
+   `public/cv.pdf` ke bucket jika ingin dikelola dari dashboard, lalu perbarui URL-nya
+   di data profil/sertifikat.
+
+URL publik objek berbentuk:
+
+```
+https://<project-ref>.supabase.co/storage/v1/object/public/uploads/<path>
+```
+
+Tambahkan host Supabase ke `images.remotePatterns` di `next.config.ts` supaya
+`next/image` boleh memuatnya:
+
+```ts
+images: {
+  remotePatterns: [
+    { protocol: "https", hostname: "<project-ref>.supabase.co", pathname: "/storage/v1/object/public/**" },
+  ],
+},
+```
+
+### 4. Deploy
+
+1. Push repo ke GitHub, lalu **Add New → Project** di Vercel dan impor repo-nya.
+2. Framework otomatis terdeteksi sebagai Next.js.
+3. Isi semua variabel di bagian "Environment variables" pada **Settings → Environment
+   Variables** (Production dan Preview). Jangan isi `ADMIN_PASSWORD` dengan nilai
+   default.
+4. Klik **Deploy**.
+5. Setelah selesai, buka `https://<domain>/login` dan masuk dengan akun dari `seed:admin`.
+
+Dengan Vercel CLI:
+
+```bash
+bunx vercel link
+bunx vercel env pull .env.local
+bunx vercel --prod
+```
+
+### 5. Cron untuk auto-generate artikel
+
+Container `cron` di Docker tidak dipakai di Vercel. Gunakan Vercel Cron lewat `vercel.json`:
+
+```json
+{
+  "crons": [{ "path": "/api/cron/generate-article", "schedule": "0 2 * * *" }]
+}
+```
+
+Vercel mengirim header `Authorization: Bearer <CRON_SECRET>` jika variabel
+`CRON_SECRET` diisi. Pastikan route `/api/cron/generate-article` memverifikasi header
+itu. Di plan Hobby, cron hanya boleh berjalan sekali sehari, dan satu eksekusi dibatasi
+durasi function. Generate gambar AI yang lambat bisa melewati batas itu, jadi biarkan
+`GEMINI_IMAGE_ENABLED=false` jika terjadi timeout.
+
+### Checklist setelah deploy
+
+- [ ] Login `/login` berhasil dan password admin sudah diganti
+- [ ] Upload cover dan gambar artikel muncul setelah redeploy
+- [ ] Gambar sertifikat dan profil tampil di home
+- [ ] Endpoint cron menolak request tanpa secret
+- [ ] `DATABASE_URL` memakai port 6543, `DIRECT_URL` memakai port 5432
+
+## Alternatif: Docker Compose (self-host)
+
+```bash
+cp .env.example .env
 docker compose up --build -d
 docker compose exec -T db sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f -' < src/db/policies.sql
 docker compose exec app bun run seed:admin
 docker compose exec app bun run seed:content
 ```
 
-Open http://localhost:3000. Staff login is at `/login` (linked quietly from the
-footer, not the main nav — see `SECURITY.md`).
+Mode ini menyimpan upload di volume `uploads_data` (`public/uploads/`).
 
 ## Docs
 
 `PRD.md`, `ARCHITECTURE.md`, `SECURITY.md`, `DESIGN_SYSTEM.md`, `CODE_STYLE.md`,
-`AGENTS.md` — still reflect an earlier state of the project (pre-dashboard,
-pre-auto-generate, pre-this-round). The code has moved faster than the docs across
-the last few rounds; happy to reconcile them in a dedicated pass if useful.
+`AGENTS.md`. Sebagian masih mencerminkan kondisi lama project dan perlu disinkronkan.
 
-## Still not done (said plainly, not buried)
+## Belum selesai
 
-- GitHub repo auto-sync for Projects
-- Dashboard CRUD for education/experience/certifications/skills (data model +
-  repository exist in `src/modules/content/`, no write-side UI yet)
-- Comment moderation is delete-only (no pending/approve queue)
-- Automated tests
+- Sinkronisasi otomatis project dari GitHub
+- Test otomatis
+- Moderasi komentar tingkat lanjut
