@@ -216,20 +216,25 @@ async function generateOne(
     process.env.POLLINATIONS_ENABLED !== "false" &&
     left() > MIN_ATTEMPT_MS
   ) {
-    await pacePollinations(left() - MIN_ATTEMPT_MS - 20_000);
-    try {
-      return await withinMs(
-        generatePollinationsImage(prompt, {
-          timeoutMs: Math.min(left(), 40_000),
-          attempts: 2,
-        }),
-        left(),
-        "pollinations",
-      );
-    } catch (err) {
-      logger.warn("article_image_pollinations_failed", {
-        error: (err as Error).message.slice(0, 300),
-      });
+    for (let k = 0; k < 3 && left() > MIN_ATTEMPT_MS + 10_000; k++) {
+      await pacePollinations(left() - MIN_ATTEMPT_MS - 20_000);
+      try {
+        return await withinMs(
+          generatePollinationsImage(prompt, {
+            timeoutMs: Math.min(left(), 40_000),
+            attempts: 2,
+          }),
+          Math.min(left(), 80_000),
+          "pollinations",
+        );
+      } catch (err) {
+        logger.warn("article_image_pollinations_failed", {
+          attempt: k + 1,
+          error: (err as Error).message.slice(0, 300),
+        });
+        const pause = Math.min(20_000, Math.max(0, left() - MIN_ATTEMPT_MS));
+        await new Promise((r) => setTimeout(r, pause));
+      }
     }
   }
   return null;
