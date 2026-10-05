@@ -22,7 +22,7 @@ Deploy: Vercel
   komentar publik (honeypot + rate limit) dengan moderasi.
 - **Dashboard:** sidebar yang bisa di-collapse, analytics, manajemen artikel, komentar,
   profil, pengguna, dan konten portfolio.
-- **Auth:** session cookie, RBAC (staff/editor/viewer), RLS di Postgres.
+- **Auth:** session cookie, RBAC (super_admin/admin/editor/viewer), RLS di Postgres.
 - **Auto-generate artikel** terjadwal lewat endpoint cron.
 
 ## Development lokal
