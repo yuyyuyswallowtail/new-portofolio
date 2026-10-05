@@ -1,3 +1,5 @@
+import { cn } from "@/lib/utils";
+
 export function ArticleCover({
   src,
   alt = "",
@@ -14,7 +16,10 @@ export function ArticleCover({
       src={src}
       alt={alt}
       loading="lazy"
-      className={`aspect-video rounded-[6px] border border-line object-cover ${className}`}
+      className={cn(
+        "aspect-video rounded-[6px] border border-line object-cover",
+        className,
+      )}
     />
   );
 }

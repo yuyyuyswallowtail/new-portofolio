@@ -1,8 +1,8 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CommentsSection } from "@/components/site/comments-section";
 import { SiteFooter } from "@/components/site/footer";
 import { SiteNav } from "@/components/site/nav";
-import { Badge } from "@/components/ui/badge";
 import { sanitizeArticleHtml } from "@/lib/markdown";
 import { isStaff } from "@/lib/rbac";
 import { getCurrentUser } from "@/lib/session";
@@ -30,36 +30,43 @@ export default async function ArticleDetailPage({
   return (
     <>
       <SiteNav />
-      <main className="mx-auto w-full max-w-[72ch] px-4 py-10 sm:px-6 sm:py-16">
-        <div className="font-data flex flex-wrap items-center gap-2 text-xs text-ink-muted sm:gap-3">
+      <main className="mx-auto w-full max-w-4xl px-4 py-10 sm:px-6 sm:py-16">
+        <Link href="/articles" className="kicker hover:text-ink">
+          ← All articles
+        </Link>
+        <div className="font-data mt-8 flex flex-wrap items-center gap-2 text-xs text-ink-muted">
           <span>{formatDate(article.publishedAt)}</span>
-          {article.aiGenerated && <Badge tone="accent">ai-generated</Badge>}
+          {article.aiGenerated && <span className="chip">ai-generated</span>}
           {article.tags.map((t) => (
-            <Badge key={t}>{t}</Badge>
+            <span key={t} className="chip">
+              {t}
+            </span>
           ))}
         </div>
-        <h1 className="mt-3 text-2xl font-semibold leading-tight sm:text-3xl md:text-4xl">
+        <h1 className="mt-4 text-3xl font-extrabold leading-[1.05] tracking-tight sm:text-5xl">
           {article.title}
         </h1>
         {article.coverImageUrl && (
-          // biome-ignore lint/performance/noImgElement: cover image may be a data: URL (Gemini output) or an uploaded file, next/image can't optimize either reliably here
+          // biome-ignore lint/performance/noImgElement: cover bisa berupa data: URL atau file upload, next/image tidak bisa mengoptimasi keduanya dengan andal di sini
           <img
             src={article.coverImageUrl}
             alt={article.title}
-            className="mt-6 w-full rounded-[6px] border border-line object-cover"
+            className="mt-8 w-full rounded-[28px] border border-line object-cover"
           />
         )}
-        <div
-          className="prose prose-invert mt-8 w-full max-w-none break-words"
-          // biome-ignore lint/security/noDangerouslySetInnerHtml: html is DOMPurify-sanitized via sanitizeArticleHtml(), see SECURITY.md §3
-          dangerouslySetInnerHTML={{ __html: html }}
-        />
-        <CommentsSection
-          articleId={article.id}
-          articleSlug={article.slug}
-          comments={comments}
-          canModerate={isStaff(user?.role)}
-        />
+        <div className="mx-auto mt-10 max-w-[72ch]">
+          <div
+            className="prose break-words max-w-none"
+            // biome-ignore lint/security/noDangerouslySetInnerHtml: html sudah disanitasi DOMPurify lewat sanitizeArticleHtml(), lihat SECURITY.md §3
+            dangerouslySetInnerHTML={{ __html: html }}
+          />
+          <CommentsSection
+            articleId={article.id}
+            articleSlug={article.slug}
+            comments={comments}
+            canModerate={isStaff(user?.role)}
+          />
+        </div>
       </main>
       <SiteFooter />
     </>
