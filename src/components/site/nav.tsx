@@ -55,7 +55,7 @@ export function SiteNav() {
             <ThemeToggle />
             <button
               type="button"
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-line text-ink lg:hidden"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-ink lg:hidden"
               onClick={() => setOpen((v) => !v)}
               aria-label="Toggle menu"
               aria-expanded={open}
