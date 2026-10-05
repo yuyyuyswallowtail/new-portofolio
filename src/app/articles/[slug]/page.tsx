@@ -57,7 +57,7 @@ export default async function ArticleDetailPage({
         <div className="mx-auto mt-10 max-w-[72ch]">
           <div
             className="prose break-words max-w-none"
-            // biome-ignore lint/security/noDangerouslySetInnerHtml: html sudah disanitasi DOMPurify lewat sanitizeArticleHtml(), lihat SECURITY.md §3
+            // biome-ignore lint/security/noDangerouslySetInnerHtml: html sudah disanitasi sanitize-html lewat sanitizeArticleHtml(), lihat SECURITY.md §3
             dangerouslySetInnerHTML={{ __html: html }}
           />
           <CommentsSection
