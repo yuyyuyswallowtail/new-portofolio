@@ -219,11 +219,22 @@ export default async function HomePage() {
                       {formatDate(e.startDate)} —{" "}
                       {e.endDate ? formatDate(e.endDate) : "now"}
                     </p>
-                    <div>
-                      <h3 className="text-2xl font-semibold tracking-tight md:text-3xl">
-                        {e.degree ?? e.institution}
-                      </h3>
-                      <p className="mt-1 text-ink-muted">{e.institution}</p>
+                    <div className="flex items-start gap-5">
+                      {e.imageUrl && (
+                        // biome-ignore lint/performance/noImgElement: gambar kecil (thumbnail institusi), optimasi next/image tidak perlu
+                        <img
+                          src={e.imageUrl}
+                          alt={e.institution}
+                          loading="lazy"
+                          className="h-20 w-20 shrink-0 rounded-2xl object-cover shadow-[0_14px_32px_-14px_rgb(0_0_0/0.5)] ring-1 ring-line md:h-28 md:w-28"
+                        />
+                      )}
+                      <div>
+                        <h3 className="text-2xl font-semibold tracking-tight md:text-3xl">
+                          {e.degree ?? e.institution}
+                        </h3>
+                        <p className="mt-1 text-ink-muted">{e.institution}</p>
+                      </div>
                     </div>
                     {e.gpa && (
                       <span className="chip h-fit self-start text-ink-muted">

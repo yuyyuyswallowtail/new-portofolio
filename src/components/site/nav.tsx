@@ -25,7 +25,7 @@ export function SiteNav() {
     <header
       className={`sticky top-0 z-30 border-b transition-[background-color,border-color,backdrop-filter] duration-300 motion-reduce:transition-none ${
         scrolled || open
-          ? "border-line bg-bg/50 backdrop-blur-xl backdrop-saturate-150"
+          ? "border-line bg-bg/70 backdrop-blur-xl backdrop-saturate-150"
           : "border-transparent bg-transparent"
       }`}
     >
@@ -54,16 +54,20 @@ export function SiteNav() {
           >
             Contact
           </Link>
-          <ThemeToggle />
-          <button
-            type="button"
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-line text-ink-muted lg:hidden"
-            onClick={() => setOpen((v) => !v)}
-            aria-label="Toggle menu"
-            aria-expanded={open}
-          >
-            {open ? <X size={16} /> : <Menu size={16} />}
-          </button>
+          {/* Di mobile, tombol dibungkus latar solid supaya tetap terlihat di atas
+              section berwarna (mis. kartu kuning Contact) dan footer gelap. */}
+          <div className="flex items-center gap-2 max-lg:rounded-full max-lg:bg-bg/90 max-lg:p-1 max-lg:shadow-sm max-lg:ring-1 max-lg:ring-line">
+            <ThemeToggle />
+            <button
+              type="button"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-line text-ink lg:hidden"
+              onClick={() => setOpen((v) => !v)}
+              aria-label="Toggle menu"
+              aria-expanded={open}
+            >
+              {open ? <X size={16} /> : <Menu size={16} />}
+            </button>
+          </div>
         </div>
       </nav>
       {open && (
