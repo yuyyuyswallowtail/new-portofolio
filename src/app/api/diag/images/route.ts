@@ -75,7 +75,7 @@ async function geminiImage(): Promise<string> {
     signal: AbortSignal.timeout(40_000),
   });
   const text = await res.text();
-  if (!res.ok) throw new Error(`[${model}] ${res.status} ${text.slice(0, 300)}`);
+  if (!res.ok) throw new Error(`[${model}] ${res.status} ${text.slice(0, 1500)}`);
   if (!text.includes('"inlineData"')) {
     throw new Error(`[${model}] 200 tapi tanpa data gambar`);
   }
