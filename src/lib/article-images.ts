@@ -157,6 +157,15 @@ Output only the prompt.`;
  * Gemini (kalau aktif) -> Pollinations (kalau aktif) -> null.
  * Tidak pernah throw, dan selesai paling lambat budgetMs.
  */
+// Tier anonim Pollinations: 1 request per 15 detik. Beri jeda antar-request.
+let lastPollinationsAt = 0;
+async function pacePollinations(maxWaitMs: number): Promise<void> {
+  const gap = lastPollinationsAt + 16_000 - Date.now();
+  const wait = Math.min(Math.max(0, gap), Math.max(0, maxWaitMs));
+  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+  lastPollinationsAt = Date.now();
+}
+
 async function generateOne(
   prompt: string,
   budgetMs: number,
@@ -181,6 +190,7 @@ async function generateOne(
     process.env.POLLINATIONS_ENABLED !== "false" &&
     left() > MIN_ATTEMPT_MS
   ) {
+    await pacePollinations(left() - MIN_ATTEMPT_MS - 20_000);
     try {
       return await withinMs(
         generatePollinationsImage(prompt, {
