@@ -5,7 +5,7 @@ import { runAutoGenerate } from "@/modules/articles/service";
 
 export const runtime = "nodejs";
 // Generate artikel + gambar bisa lama. 60 detik adalah batas aman di plan Hobby.
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 /**
  * Dipanggil oleh Vercel Cron (GET + header `Authorization: Bearer <CRON_SECRET>`)
