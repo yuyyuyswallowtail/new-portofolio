@@ -34,6 +34,7 @@
     "framer-motion": "^11.15.0",
     "lucide-react": "^0.474.0",
     "marked": "^12.0.2",
+    "matter-js": "^0.20.0",
     "meshline": "^3.3.1",
     "next": "16.3.6",
     "postgres": "^3.4.9",
@@ -52,6 +53,7 @@
     "@commitlint/config-conventional": "^21.2.3",
     "@tailwindcss/postcss": "^4",
     "@tailwindcss/typography": "^0.5.15",
+    "@types/matter-js": "^0.20.2",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -59,6 +61,7 @@
     "@types/three": "^0.171.0",
     "drizzle-kit": "^0.31.11",
     "husky": "^9.1.7",
+    "sharp": "^0.35.5",
     "tailwindcss": "^4",
     "tsx": "^4.19.2",
     "typescript": "^5"
