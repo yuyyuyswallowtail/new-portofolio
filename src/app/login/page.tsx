@@ -30,7 +30,7 @@ export default function LoginPage() {
   const ToggleIcon = showPassword ? EyeOff : Eye;
 
   return (
-    <main className="grid min-h-dvh md:grid-cols-[1.1fr_1fr]">
+    <main className="grid min-h-dvh md:grid-cols-[1.1fr_1fr] [--accent:#ffc21a] [--accent-strong:color-mix(in_srgb,#ffc21a_85%,black)]">
       <aside className="m-3 flex min-h-56 flex-col justify-between rounded-[28px] bg-block-yellow p-7 text-on-block md:m-4 md:min-h-0 md:p-10">
         <Link
           href="/"
