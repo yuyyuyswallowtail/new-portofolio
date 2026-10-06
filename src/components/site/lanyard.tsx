@@ -1044,7 +1044,9 @@ export default function Lanyard({
       const wrap = wrapRef.current;
       if (wrap) {
         wrap.style.opacity = String(fade);
-        wrap.style.clipPath = `inset(${Math.round(navBottom())}px 0 0 0)`;
+        // Di puncak halaman (hero) tali tidak dipotong; clip naik bertahap saat scroll.
+        const clipTop = Math.round(navBottom() * clamp(y / 160));
+        wrap.style.clipPath = clipTop > 0 ? `inset(${clipTop}px 0 0 0)` : "none";
       }
       setCovered(fade <= 0.01);
       const rel = releasedRef.current;
