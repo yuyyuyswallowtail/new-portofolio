@@ -471,3 +471,22 @@ a.chip:hover {
   --color-ink-muted: #8b95a3;
   --color-line: #232a34;
 }
+
+/* Marquee: arah balik, lebih lambat, dan hormati reduced motion. */
+.marquee-track.is-reverse {
+  animation-direction: reverse;
+}
+.marquee-track.is-slow {
+  animation-duration: 75s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track {
+    animation: none;
+  }
+}
+
+/* Judul di atas pita kuning: kontur warna latar supaya huruf tetap terbaca. */
+.title-on-band {
+  -webkit-text-stroke: 0.04em var(--bg);
+  paint-order: stroke fill;
+}

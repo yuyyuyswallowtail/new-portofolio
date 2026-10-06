@@ -7,7 +7,10 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { CrtBackdrop, CrtOverlay } from "./crt-backdrop";
 import { useIntroDone } from "./intro";
+import { Marquee } from "./marquee";
 import { EASE, RevealText } from "./motion";
+
+const HERO_BAND = ["Software Engineer", "Full Stack", "Web Developer"];
 
 // Three.js + Rapier hanya dimuat di browser, dan hanya untuk beranda.
 const Lanyard = dynamic(() => import("./lanyard"), { ssr: false });
@@ -59,13 +62,23 @@ export function HeroSection({
           <motion.p className="kicker" {...rise(0.05)}>
             / Software Engineer &amp; Full Stack Web Developer
           </motion.p>
-          <h1 className="display-xl crt-text mt-6 break-words">
-            {introDone || reduce ? (
-              <RevealText text={name} delay={0.1} />
-            ) : (
-              <span className="invisible">{name}</span>
-            )}
-          </h1>
+          <div className="relative mt-6">
+            <Marquee
+              items={HERO_BAND}
+              behind
+              tilt={-6}
+              reverse
+              slow
+              size="md"
+            />
+            <h1 className="display-xl crt-text title-on-band break-words">
+              {introDone || reduce ? (
+                <RevealText text={name} delay={0.1} />
+              ) : (
+                <span className="invisible">{name}</span>
+              )}
+            </h1>
+          </div>
           <motion.p
             className="mt-8 line-clamp-3 max-w-xl text-lg leading-relaxed text-ink-muted md:text-xl"
             {...rise(0.45)}
