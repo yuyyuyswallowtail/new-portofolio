@@ -21,6 +21,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import * as THREE from "three";
 import { useIntroDone } from "./intro";
 
@@ -337,6 +338,16 @@ const FOV = 25;
 const ANCHOR_SPREAD_PX = 110; // jarak tiap pangkal tali dari tengah, dalam px layar
 const CARD_PX = { desktop: 300, mobile: 230 }; // tinggi kartu di layar
 
+// ---- koreografi scroll (hanya layar lebar) ----
+// p = seberapa jauh section About sudah naik menutupi hero (0..1).
+const FRAY_FROM = 0.05; // tali mulai menipis
+const RELEASE_AT = 0.55; // tali putus, kartu lepas
+const REATTACH_BELOW = 0.3; // scroll balik: tali tersambung lagi
+const REST_TILT = 0.1; // kemiringan kartu saat diam di About (rad)
+const TARGET_ID = "lanyard-target";
+// z-index canvas: tepat di bawah navbar supaya pangkal tali tetap tersembunyi di baliknya.
+const PORTAL_Z = 29;
+
 type Layout = {
   w: number;
   h: number;
@@ -344,6 +355,14 @@ type Layout = {
   cy: number;
   cardPx: number;
 };
+
+type Drive = {
+  released: boolean;
+  progress: { current: number };
+  getTarget: () => HTMLElement | null;
+};
+
+type Vec3 = { x: number; y: number; z: number };
 
 function useBodyRef(): RefObject<RapierRigidBody> {
   return useRef<RapierRigidBody>(null) as RefObject<RapierRigidBody>;
@@ -377,17 +396,67 @@ function updateStrand(
   (mesh.geometry as MeshLineGeometry).setPoints(curve.getPoints(points));
 }
 
+// Garis lurus a -> b (potongan tali setelah putus).
+function lineBetween(
+  mesh: THREE.Mesh | null,
+  curve: THREE.CatmullRomCurve3,
+  a: Vec3,
+  b: Vec3,
+  points: number,
+) {
+  if (!mesh) return;
+  for (let i = 0; i < 4; i++) {
+    const t = i / 3;
+    curve.points[i]?.set(
+      a.x + (b.x - a.x) * t,
+      a.y + (b.y - a.y) * t,
+      a.z + (b.z - a.z) * t,
+    );
+  }
+  (mesh.geometry as MeshLineGeometry).setPoints(curve.getPoints(points));
+}
+
+// Sambungan dibuat sebagai komponen supaya bisa dilepas (unmount) saat tali putus.
+function Rope({
+  a,
+  b,
+  len,
+}: {
+  a: RefObject<RapierRigidBody>;
+  b: RefObject<RapierRigidBody>;
+  len: number;
+}) {
+  useRopeJoint(a, b, [[0, 0, 0], [0, 0, 0], len]);
+  return null;
+}
+
+function Pin({
+  a,
+  b,
+}: {
+  a: RefObject<RapierRigidBody>;
+  b: RefObject<RapierRigidBody>;
+}) {
+  useSphericalJoint(a, b, [
+    [0, 0, 0],
+    [0, RING_Y, 0],
+  ]);
+  return null;
+}
+
 function Strap({
   meshRef,
   texture,
   size,
+  visible = true,
 }: {
   meshRef: RefObject<THREE.Mesh | null>;
   texture: THREE.Texture;
   size: [number, number];
+  visible?: boolean;
 }) {
   return (
-    <mesh ref={meshRef} frustumCulled={false}>
+    <mesh ref={meshRef} frustumCulled={false} visible={visible}>
       <meshLineGeometry />
       <meshLineMaterial
         color="white"
@@ -406,13 +475,17 @@ function Band({
   textures,
   isSmall,
   layout,
+  drive,
 }: {
   textures: Textures;
   isSmall: boolean;
   layout: Layout;
+  drive: Drive;
 }) {
   const bandL = useRef<THREE.Mesh>(null);
   const bandR = useRef<THREE.Mesh>(null);
+  const stubL = useRef<THREE.Mesh>(null);
+  const stubR = useRef<THREE.Mesh>(null);
   const fixedL = useBodyRef();
   const l1 = useBodyRef();
   const l2 = useBodyRef();
@@ -429,11 +502,24 @@ function Band({
   const rot = useMemo(() => new THREE.Vector3(), []);
   const curveL = useMemo(makeCurve, []);
   const curveR = useMemo(makeCurve, []);
+  const stubCurveL = useMemo(makeCurve, []);
+  const stubCurveR = useMemo(makeCurve, []);
+
+  // Keadaan setelah tali putus: kartu digerakkan kinematik menuju target di About.
+  const released = drive.released;
+  const releasedRef = useRef(released);
+  releasedRef.current = released;
+  const curP = useMemo(() => new THREE.Vector3(), []);
+  const curQ = useMemo(() => new THREE.Quaternion(), []);
+  const tgtQ = useMemo(() => new THREE.Quaternion(), []);
+  const eul = useMemo(() => new THREE.Euler(), []);
+  const tRel = useRef(0);
 
   const [dragged, setDragged] = useState<THREE.Vector3 | false>(false);
   const [hovered, setHovered] = useState(false);
 
   const { w, h, cx, cy, cardPx } = layout;
+  const kw = CARD_H / cardPx; // satuan dunia per px
   const geo = useMemo(() => {
     const k = CARD_H / cardPx; // satuan dunia per px
     const x = (cx - w / 2) * k;
@@ -484,17 +570,6 @@ function Band({
     [bodyGeo, faceGeo],
   );
 
-  useRopeJoint(fixedL, l1, [[0, 0, 0], [0, 0, 0], geo.seg]);
-  useRopeJoint(l1, l2, [[0, 0, 0], [0, 0, 0], geo.seg]);
-  useRopeJoint(l2, mid, [[0, 0, 0], [0, 0, 0], geo.seg]);
-  useRopeJoint(fixedR, r1, [[0, 0, 0], [0, 0, 0], geo.seg]);
-  useRopeJoint(r1, r2, [[0, 0, 0], [0, 0, 0], geo.seg]);
-  useRopeJoint(r2, mid, [[0, 0, 0], [0, 0, 0], geo.seg]);
-  useSphericalJoint(mid, card, [
-    [0, 0, 0],
-    [0, RING_Y, 0],
-  ]);
-
   useEffect(() => {
     if (!hovered) return;
     document.body.style.cursor = dragged ? "grabbing" : "grab";
@@ -503,12 +578,37 @@ function Band({
     };
   }, [hovered, dragged]);
 
+  // Saat men-drag kartu, jangan ikut menyeleksi teks halaman.
+  useEffect(() => {
+    if (!dragged) return;
+    document.body.style.userSelect = "none";
+    return () => {
+      document.body.style.userSelect = "";
+    };
+  }, [dragged]);
+
+  // Saat tali putus: ingat posisi/rotasi kartu sekarang, dan buat potongan tali
+  // yang jatuh tidak bertabrakan dengan kartu.
+  useEffect(() => {
+    if (!released) return;
+    const c = card.current;
+    if (!c) return;
+    const t = c.translation();
+    const r = c.rotation();
+    curP.set(t.x, t.y, 0);
+    curQ.set(r.x, r.y, r.z, r.w);
+    tRel.current = 0;
+    for (const ref of [l2, r2, mid]) ref.current?.collider(0)?.setSensor(true);
+  }, [released, card, l2, r2, mid, curP, curQ]);
+
   useFrame((state, delta) => {
     const cardBody = card.current;
     const midBody = mid.current;
     const fL = fixedL.current;
     const fR = fixedR.current;
     if (!cardBody || !midBody || !fL || !fR) return;
+    const isReleased = releasedRef.current;
+    const p = drive.progress.current;
 
     if (dragged) {
       vec.set(state.pointer.x, state.pointer.y, 0.5).unproject(state.camera);
@@ -522,6 +622,33 @@ function Band({
         y: vec.y - dragged.y,
         z: vec.z - dragged.z,
       });
+      if (isReleased) curP.set(vec.x - dragged.x, vec.y - dragged.y, 0);
+    } else if (isReleased) {
+      const dt = Math.min(delta, 0.05);
+      tRel.current += dt;
+      const el = drive.getTarget();
+      if (el) {
+        const r = el.getBoundingClientRect();
+        const tx = (r.left + r.width / 2 - w / 2) * kw;
+        const ty =
+          (h / 2 - (r.top + r.height / 2)) * kw +
+          Math.sin(state.clock.elapsedTime * 1.3) * 0.04;
+        // jatuh sedikit dulu, baru meluncur ke target
+        const dip = Math.sin(Math.PI * Math.min(1, tRel.current / 0.9)) * 0.9;
+        const a = 1 - Math.exp(-dt * (tRel.current < 0.35 ? 2.4 : 6));
+        curP.x += (tx - curP.x) * a;
+        curP.y += (ty - dip - curP.y) * a;
+      }
+      const spin = Math.sin(Math.PI * Math.min(1, tRel.current / 1.2)) * 0.9;
+      eul.set(
+        0,
+        spin,
+        REST_TILT + Math.sin(state.clock.elapsedTime * 0.8) * 0.025,
+      );
+      tgtQ.setFromEuler(eul);
+      curQ.slerp(tgtQ, 1 - Math.exp(-dt * 6));
+      cardBody.setNextKinematicTranslation({ x: curP.x, y: curP.y, z: 0 });
+      cardBody.setNextKinematicRotation(curQ);
     }
 
     [l1, l2, r1, r2].forEach((ref, i) => {
@@ -537,28 +664,43 @@ function Band({
     });
 
     const pts = isSmall ? 16 : 32;
-    updateStrand(
-      bandL.current,
-      curveL,
-      midBody,
-      lerps.current[1] ?? null,
-      lerps.current[0] ?? null,
-      fL,
-      pts,
-    );
-    updateStrand(
-      bandR.current,
-      curveR,
-      midBody,
-      lerps.current[3] ?? null,
-      lerps.current[2] ?? null,
-      fR,
-      pts,
-    );
+    const l1p = lerps.current[0] ?? null;
+    const l2p = lerps.current[1] ?? null;
+    const r1p = lerps.current[2] ?? null;
+    const r2p = lerps.current[3] ?? null;
+    if (!isReleased) {
+      updateStrand(bandL.current, curveL, midBody, l2p, l1p, fL, pts);
+      updateStrand(bandR.current, curveR, midBody, r2p, r1p, fR, pts);
+    } else {
+      // Tali putus: potongan atas menggantung di pangkal, potongan bawah jatuh.
+      const tailL = l2p ?? l2.current?.translation();
+      const tailR = r2p ?? r2.current?.translation();
+      const topL = l1p ?? l1.current?.translation();
+      const topR = r1p ?? r1.current?.translation();
+      if (tailL) lineBetween(bandL.current, curveL, tailL, midBody.translation(), pts);
+      if (tailR) lineBetween(bandR.current, curveR, tailR, midBody.translation(), pts);
+      if (topL) lineBetween(stubL.current, stubCurveL, fL.translation(), topL, pts);
+      if (topR) lineBetween(stubR.current, stubCurveR, fR.translation(), topR, pts);
+    }
 
-    ang.copy(cardBody.angvel());
-    rot.copy(cardBody.rotation());
-    cardBody.setAngvel({ x: ang.x, y: ang.y - rot.y * 0.25, z: ang.z }, true);
+    // Tali menipis seiring scroll (seperti ditarik), lalu putus.
+    const fray = Math.min(
+      1,
+      Math.max(0, (p - FRAY_FROM) / (RELEASE_AT - FRAY_FROM)),
+    );
+    const width = isReleased
+      ? STRAP_WIDTH * 0.4
+      : STRAP_WIDTH * (1 - 0.65 * fray * fray);
+    for (const m of [bandL.current, bandR.current, stubL.current, stubR.current]) {
+      const mat = m?.material as unknown as { lineWidth: number } | undefined;
+      if (mat) mat.lineWidth = width;
+    }
+
+    if (!isReleased) {
+      ang.copy(cardBody.angvel());
+      rot.copy(cardBody.rotation());
+      cardBody.setAngvel({ x: ang.x, y: ang.y - rot.y * 0.25, z: ang.z }, true);
+    }
   });
 
   const segmentProps = {
@@ -609,7 +751,7 @@ function Band({
         ref={card}
         {...segmentProps}
         position={[geo.x, geo.midStartY - RING_Y, 0]}
-        type={dragged ? "kinematicPosition" : "dynamic"}
+        type={released || dragged ? "kinematicPosition" : "dynamic"}
       >
         <CuboidCollider args={[CARD_W / 2, CARD_H / 2, CARD_D / 2]} />
         <group
@@ -701,8 +843,19 @@ function Band({
         </group>
       </RigidBody>
 
+      {/* Sambungan tali. Yang di tengah dan di kartu dilepas saat tali putus. */}
+      <Rope a={fixedL} b={l1} len={geo.seg} />
+      {!released && <Rope a={l1} b={l2} len={geo.seg} />}
+      <Rope a={l2} b={mid} len={geo.seg} />
+      <Rope a={fixedR} b={r1} len={geo.seg} />
+      {!released && <Rope a={r1} b={r2} len={geo.seg} />}
+      <Rope a={r2} b={mid} len={geo.seg} />
+      {!released && <Pin a={mid} b={card} />}
+
       <Strap meshRef={bandL} texture={textures.strap} size={[w, h]} />
       <Strap meshRef={bandR} texture={textures.strap} size={[w, h]} />
+      <Strap meshRef={stubL} texture={textures.strap} size={[w, h]} visible={released} />
+      <Strap meshRef={stubR} texture={textures.strap} size={[w, h]} visible={released} />
     </>
   );
 }
@@ -731,9 +884,23 @@ export default function Lanyard({
   const introDone = useIntroDone();
   const textures = useCardTextures(photoUrl, name, title);
   const wrapRef = useRef<HTMLDivElement>(null);
-  const visible = useInView(wrapRef);
-  const [isSmall, setIsSmall] = useState(false);
+  const inView = useInView(wrapRef);
+  const [isSmall, setIsSmall] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 1023px)").matches,
+  );
   const [box, setBox] = useState<Omit<Layout, "cardPx"> | null>(null);
+  const [released, setReleased] = useState(false);
+  const [epoch, setEpoch] = useState(0);
+  const [covered, setCovered] = useState(false);
+  const progress = useRef(0);
+  const releasedRef = useRef(false);
+  const targetRef = useRef<HTMLElement | null>(null);
+
+  // Layar lebar: canvas jadi lapisan fixed (via portal) dengan koreografi scroll.
+  // Layar kecil: seperti sebelumnya, canvas di dalam hero.
+  const choreo = !isSmall;
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 1023px)");
@@ -774,21 +941,68 @@ export default function Lanyard({
       ro.disconnect();
       window.removeEventListener("resize", schedule);
     };
-  }, [eventSource]);
+  }, [eventSource, choreo]);
+
+  // Progres scroll: tali menipis, putus, lalu kartu pindah ke About.
+  useEffect(() => {
+    if (!choreo) return;
+    const about = document.getElementById("about");
+    const after = about?.nextElementSibling ?? null;
+    targetRef.current = document.getElementById(TARGET_ID);
+    const clamp = (n: number) => Math.min(1, Math.max(0, n));
+    const update = () => {
+      const vh = window.innerHeight;
+      const p = about ? clamp(1 - about.getBoundingClientRect().top / vh) : 0;
+      progress.current = p;
+      const q = after ? clamp(1 - after.getBoundingClientRect().top / vh) : 0;
+      const fade = 1 - clamp((q - 0.1) / 0.4);
+      if (wrapRef.current) wrapRef.current.style.opacity = String(fade);
+      setCovered(fade <= 0.01);
+      const rel = releasedRef.current;
+      const next = Boolean(targetRef.current) && (rel ? p > REATTACH_BELOW : p >= RELEASE_AT);
+      if (next !== rel) {
+        releasedRef.current = next;
+        setReleased(next);
+        if (!next) setEpoch((e) => e + 1); // tali tersambung lagi: pasang ulang dari atas
+      }
+    };
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, [choreo, box]);
 
   const cardPx = isSmall ? CARD_PX.mobile : CARD_PX.desktop;
   const k = CARD_H / cardPx;
   const camZ = box ? (box.h * k) / 2 / Math.tan((FOV * Math.PI) / 360) : 12;
+  const drive: Drive = {
+    released,
+    progress,
+    getTarget: () => targetRef.current,
+  };
 
-  return (
-    <div ref={wrapRef} className="pointer-events-none absolute inset-0 z-30">
+  const content = (
+    <div
+      ref={wrapRef}
+      className={
+        choreo
+          ? "pointer-events-none fixed inset-0"
+          : "pointer-events-none absolute inset-0 z-30"
+      }
+      style={choreo ? { zIndex: PORTAL_Z } : undefined}
+    >
       {box && (
         <Canvas
           camera={{ position: [0, 0, camZ], fov: FOV }}
           dpr={[1, 2]}
           gl={{ alpha: true, antialias: true }}
-          frameloop={visible ? "always" : "never"}
-          eventSource={eventSource as RefObject<HTMLElement>}
+          frameloop={(choreo ? !covered : inView) ? "always" : "never"}
+          eventSource={
+            choreo ? document.body : (eventSource as RefObject<HTMLElement>)
+          }
           eventPrefix="client"
         >
           <CameraRig z={camZ} />
@@ -796,10 +1010,11 @@ export default function Lanyard({
           <Physics gravity={GRAVITY} timeStep={1 / 60}>
             {introDone && textures && (
               <Band
-                key={`${box.w}-${box.h}-${box.cx}-${box.cy}-${cardPx}`}
+                key={`${box.w}-${box.h}-${box.cx}-${box.cy}-${cardPx}-${epoch}`}
                 textures={textures}
                 isSmall={isSmall}
                 layout={{ ...box, cardPx }}
+                drive={drive}
               />
             )}
           </Physics>
@@ -837,4 +1052,6 @@ export default function Lanyard({
       )}
     </div>
   );
+
+  return choreo ? createPortal(content, document.body) : content;
 }

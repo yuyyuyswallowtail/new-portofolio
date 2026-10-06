@@ -161,11 +161,16 @@ export default async function HomePage() {
 
         {/* ---------- About ---------- */}
         <StackSection index={1} id="about">
+          <div
+            id="lanyard-target"
+            aria-hidden="true"
+            className="pointer-events-none absolute right-6 top-[42%] hidden h-[300px] w-[215px] -translate-y-1/2 lg:block"
+          />
           <SectionHeading index={1} title="About me" kicker="About" />
           <Stagger gap={0.12}>
             {bioParas[0] && (
               <StaggerItem>
-                <p className="max-w-4xl text-2xl font-semibold leading-tight tracking-tight md:text-4xl">
+                <p className="max-w-4xl text-2xl font-semibold leading-tight tracking-tight md:text-4xl lg:max-w-[calc(100%-17.5rem)]">
                   {bioParas[0]}
                 </p>
               </StaggerItem>

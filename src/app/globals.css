@@ -495,3 +495,30 @@ a.chip:hover {
 #top {
   overflow-x: clip;
 }
+
+/* Judul retro 3D: ekstrusi bertingkat + kontur gelap + bayangan jatuh. */
+.retro-3d {
+  -webkit-text-stroke: 0.022em var(--on-block);
+  paint-order: stroke fill;
+  text-shadow:
+    1px 0 rgb(255 40 90 / 0.35),
+    -1px 0 rgb(40 220 255 / 0.35),
+    0.010em 0.010em 0 #ffb21f,
+    0.020em 0.020em 0 #ffb21f,
+    0.030em 0.030em 0 #ff9a1f,
+    0.040em 0.040em 0 #ff9a1f,
+    0.050em 0.050em 0 #f27a1c,
+    0.060em 0.060em 0 #f27a1c,
+    0.070em 0.070em 0 #d9561a,
+    0.080em 0.080em 0 #d9561a,
+    0.090em 0.090em 0 #a83a14,
+    0.100em 0.100em 0 #a83a14,
+    0.115em 0.140em 0.06em rgb(0 0 0 / 0.55);
+}
+/* Mask RevealText jangan memotong ekstrusi. */
+.retro-3d span[aria-hidden="true"] {
+  padding-right: 0.16em;
+  margin-right: -0.16em;
+  padding-bottom: 0.3em;
+  margin-bottom: -0.3em;
+}

@@ -80,7 +80,7 @@ export function HeroSection({
             / Software Engineer &amp; Full Stack Web Developer
           </motion.p>
           <div className="relative mt-6">
-            <h1 className="display-xl crt-text title-on-band break-words">
+            <h1 className="display-xl crt-text retro-3d break-words">
               {introDone || reduce ? (
                 <RevealText text={name} delay={0.1} />
               ) : (
