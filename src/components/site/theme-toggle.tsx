@@ -1,30 +1,40 @@
 "use client";
 
 import { Monitor, Moon, Sun } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 
 type Theme = "light" | "dark" | "system";
 const ORDER: Theme[] = ["light", "dark", "system"];
 const ICON = { system: Monitor, light: Sun, dark: Moon };
 
+function paint(t: Theme) {
+  if (t === "system") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme", t);
+}
+
 export function ThemeToggle() {
   const [theme, setTheme] = useState<Theme>("light");
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
+  // React 19 membersihkan atribut <html> saat hydration, jadi tema harus
+  // diterapkan ulang di sini, bukan hanya oleh skrip inline di <head>.
+  useLayoutEffect(() => {
+    let saved: string | null = null;
+    try {
+      saved = localStorage.getItem("theme");
+    } catch {}
+    const t: Theme = saved === "dark" || saved === "system" ? saved : "light";
+    setTheme(t);
+    paint(t);
     setMounted(true);
-    const saved = localStorage.getItem("theme");
-    if (saved === "dark" || saved === "system") setTheme(saved);
   }, []);
 
   function apply(next: Theme) {
     setTheme(next);
-    localStorage.setItem("theme", next);
-    if (next === "system") {
-      document.documentElement.removeAttribute("data-theme");
-    } else {
-      document.documentElement.setAttribute("data-theme", next);
-    }
+    try {
+      localStorage.setItem("theme", next);
+    } catch {}
+    paint(next);
   }
 
   function cycle() {

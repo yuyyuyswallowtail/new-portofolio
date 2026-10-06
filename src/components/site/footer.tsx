@@ -58,9 +58,6 @@ export async function SiteFooter() {
                     GitHub ↗
                   </a>
                 )}
-                {owner?.phone && (
-                  <span className="font-data text-sm">{owner.phone}</span>
-                )}
               </div>
             </div>
           </div>
@@ -83,10 +80,6 @@ export async function SiteFooter() {
               © {new Date().getFullYear()} {name}
             </span>
             <span>built with Next.js · Drizzle · Framer Motion</span>
-            {/* Sengaja kecil dan tidak di nav utama — lihat SECURITY.md */}
-            <Link href="/login" className="hover:text-accent">
-              staff login →
-            </Link>
           </div>
         </div>
       </div>

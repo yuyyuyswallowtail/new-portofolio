@@ -38,7 +38,7 @@ export function ArticleCard({ a, index }: { a: ArticleLike; index: number }) {
       </div>
       <div className="font-data mt-4 flex flex-wrap items-center gap-2 text-xs text-ink-muted">
         <span>{formatDate(a.publishedAt)}</span>
-        {a.aiGenerated && <span className="chip">ai</span>}
+        {a.aiGenerated && <span className="chip">ai-generated</span>}
         {a.tags.slice(0, 3).map((t) => (
           <span key={t} className="chip">
             {t}
