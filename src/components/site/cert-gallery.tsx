@@ -8,6 +8,7 @@ import {
   useScroll,
 } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
+import CertificatePreview from "./certificate-preview";
 import { SectionHeading } from "./section-heading";
 
 export type CertItem = {
@@ -33,6 +34,8 @@ export function CertGallery({
   const targets = useRef<number[]>([]);
   const x = useMotionValue(0);
   const [active, setActive] = useState(0);
+  const [preview, setPreview] = useState<CertItem | null>(null);
+  const closePreview = useCallback(() => setPreview(null), []);
 
   const { scrollYProgress } = useScroll({
     target: wrapRef,
@@ -103,15 +106,23 @@ export function CertGallery({
                     opacity: state === 0 ? 1 : 0.4,
                   }}
                 >
-                  {/* Shadow dan ring memakai warna "ink" yang berbalik mengikuti tema:
-                      bayangan gelap di tema terang, halo tipis di tema gelap. */}
-                  {/* biome-ignore lint/performance/noImgElement: sertifikat bisa berupa upload lokal */}
-                  <img
-                    src={c.imageUrl}
-                    alt={c.title}
-                    loading="lazy"
-                    className="h-full w-full rounded-[10px] object-cover shadow-2xl shadow-ink/30 ring-1 ring-ink/15"
-                  />
+                  <button
+                    type="button"
+                    onClick={() => setPreview(c)}
+                    aria-label={`Lihat sertifikat: ${c.title}`}
+                    className="block h-full w-full cursor-zoom-in rounded-[10px] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent-strong"
+                  >
+                    {/* Shadow dan ring memakai warna "ink" yang berbalik mengikuti tema:
+                        bayangan gelap di tema terang, halo tipis di tema gelap. */}
+                    {/* biome-ignore lint/performance/noImgElement: sertifikat bisa berupa upload lokal */}
+                    <img
+                      src={c.imageUrl}
+                      alt={c.title}
+                      loading="lazy"
+                      draggable={false}
+                      className="h-full w-full rounded-[10px] object-cover shadow-2xl shadow-ink/30 ring-1 ring-ink/15"
+                    />
+                  </button>
                 </div>
               );
             })}
@@ -134,6 +145,14 @@ export function CertGallery({
                 </p>
                 <p className="font-data mt-1 text-xs text-ink-muted">
                   {current.issuer}
+                  {" · "}
+                  <button
+                    type="button"
+                    onClick={() => setPreview(current)}
+                    className="text-accent-strong hover:underline"
+                  >
+                    preview
+                  </button>
                   {current.verifyUrl && (
                     <>
                       {" · "}
@@ -157,6 +176,16 @@ export function CertGallery({
           </p>
         </div>
       </div>
+
+      {preview && (
+        <CertificatePreview
+          src={preview.imageUrl}
+          alt={preview.title}
+          title={preview.title}
+          subtitle={preview.issuer ?? undefined}
+          onClose={closePreview}
+        />
+      )}
     </div>
   );
 }
