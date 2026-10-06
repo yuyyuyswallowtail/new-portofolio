@@ -135,6 +135,7 @@ export function CommentsSection({
             />
             {error && <p className="text-sm text-danger">{error}</p>}
             <Button
+              variant="yellow"
               disabled={pending || !name.trim() || body.trim().length < 2}
               onClick={() =>
                 startTransition(async () => {

@@ -11,6 +11,7 @@ export const buttonVariants = cva(
         outline: "border border-line text-ink hover:border-accent",
         ghost: "text-ink-muted hover:text-ink",
         danger: "bg-danger text-white hover:opacity-90",
+        yellow: "bg-block-yellow text-on-block hover:brightness-95",
       },
       size: {
         sm: "h-8 px-3",

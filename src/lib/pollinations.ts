@@ -10,6 +10,7 @@ const EXT: Record<string, string> = {
 const RETRYABLE = new Set([402, 429, 500, 502, 503, 504]);
 // Percobaan terakhir tanpa parameter model (pakai default yang sedang sehat).
 const MODELS: (string | undefined)[] = ["flux", "flux", undefined, undefined];
+export const POLLINATIONS_LABEL = MODELS[0] ?? "default";
 // Tier anonim: 1 request per ~15 detik. Dikasih margin 1 detik.
 const MIN_GAP_MS = 16_000;
 

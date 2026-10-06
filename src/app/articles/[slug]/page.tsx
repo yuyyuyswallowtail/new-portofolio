@@ -5,6 +5,7 @@ import { CommentsSection } from "@/components/site/comments-section";
 import { SiteFooter } from "@/components/site/footer";
 import { SiteNav } from "@/components/site/nav";
 import { ShareBar } from "@/components/site/share-bar";
+import { aiCredit } from "@/lib/ai-credit";
 import { sanitizeArticleHtml } from "@/lib/markdown";
 import { isStaff } from "@/lib/rbac";
 import { getCurrentUser } from "@/lib/session";
@@ -58,6 +59,11 @@ export default async function ArticleDetailPage({
         )}
         <div className="mx-auto mt-10 max-w-[72ch]">
           <ArticleBody html={html} />
+          {article.aiGenerated && (
+            <p className="font-data mt-10 text-xs text-ink-muted">
+              {aiCredit()}
+            </p>
+          )}
           <ShareBar title={article.title} slug={article.slug} />
           <CommentsSection
             articleId={article.id}
