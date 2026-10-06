@@ -512,6 +512,7 @@ function Band({
   const eul = useMemo(() => new THREE.Euler(), []);
   const tRel = useRef(0);
   const landedRef = useRef(false);
+  const lockRef = useRef<{ x: number; y: number } | null>(null);
 
   const [dragged, setDragged] = useState<THREE.Vector3 | false>(false);
   const [hovered, setHovered] = useState(false);
@@ -597,6 +598,7 @@ function Band({
     curQ.set(r.x, r.y, r.z, r.w);
     tRel.current = 0;
     landedRef.current = false;
+    lockRef.current = null;
     for (const ref of [l2, r2, mid]) ref.current?.collider(0)?.setSensor(true);
   }, [released, card, l2, r2, mid, curP, curQ]);
 
@@ -626,7 +628,11 @@ function Band({
       const dt = Math.min(delta, 0.05);
       tRel.current += dt;
       const el = drive.getTarget();
-      if (el) {
+      if (lockRef.current) {
+        // Sudah mendarat di About: posisi dikunci.
+        curP.x = lockRef.current.x;
+        curP.y = lockRef.current.y;
+      } else if (el) {
         const r = el.getBoundingClientRect();
         const tx = (r.left + r.width / 2 - w / 2) * kw;
         const ty =
@@ -643,6 +649,7 @@ function Band({
           Math.hypot(tx - curP.x, ty - curP.y) < 0.06
         ) {
           landedRef.current = true;
+          lockRef.current = { x: curP.x, y: curP.y };
           drive.onLand();
         }
       }
@@ -650,7 +657,8 @@ function Band({
       eul.set(
         0,
         spin,
-        REST_TILT + Math.sin(state.clock.elapsedTime * 0.8) * 0.025,
+        REST_TILT +
+          (lockRef.current ? 0 : Math.sin(state.clock.elapsedTime * 0.8) * 0.025),
       );
       tgtQ.setFromEuler(eul);
       curQ.slerp(tgtQ, 1 - Math.exp(-dt * 6));
