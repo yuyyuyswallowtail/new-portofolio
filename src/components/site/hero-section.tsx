@@ -66,7 +66,7 @@ export function HeroSection({
             <Marquee
               items={HERO_BAND}
               behind
-              tilt={-6}
+              tilt={6}
               reverse
               slow
               size="md"
