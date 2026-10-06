@@ -360,6 +360,7 @@ type Drive = {
   released: boolean;
   progress: { current: number };
   getTarget: () => HTMLElement | null;
+  onLand: () => void;
 };
 
 type Vec3 = { x: number; y: number; z: number };
@@ -484,8 +485,6 @@ function Band({
 }) {
   const bandL = useRef<THREE.Mesh>(null);
   const bandR = useRef<THREE.Mesh>(null);
-  const stubL = useRef<THREE.Mesh>(null);
-  const stubR = useRef<THREE.Mesh>(null);
   const fixedL = useBodyRef();
   const l1 = useBodyRef();
   const l2 = useBodyRef();
@@ -502,8 +501,6 @@ function Band({
   const rot = useMemo(() => new THREE.Vector3(), []);
   const curveL = useMemo(makeCurve, []);
   const curveR = useMemo(makeCurve, []);
-  const stubCurveL = useMemo(makeCurve, []);
-  const stubCurveR = useMemo(makeCurve, []);
 
   // Keadaan setelah tali putus: kartu digerakkan kinematik menuju target di About.
   const released = drive.released;
@@ -514,6 +511,7 @@ function Band({
   const tgtQ = useMemo(() => new THREE.Quaternion(), []);
   const eul = useMemo(() => new THREE.Euler(), []);
   const tRel = useRef(0);
+  const landedRef = useRef(false);
 
   const [dragged, setDragged] = useState<THREE.Vector3 | false>(false);
   const [hovered, setHovered] = useState(false);
@@ -598,6 +596,7 @@ function Band({
     curP.set(t.x, t.y, 0);
     curQ.set(r.x, r.y, r.z, r.w);
     tRel.current = 0;
+    landedRef.current = false;
     for (const ref of [l2, r2, mid]) ref.current?.collider(0)?.setSensor(true);
   }, [released, card, l2, r2, mid, curP, curQ]);
 
@@ -638,6 +637,14 @@ function Band({
         const a = 1 - Math.exp(-dt * (tRel.current < 0.35 ? 2.4 : 6));
         curP.x += (tx - curP.x) * a;
         curP.y += (ty - dip - curP.y) * a;
+        if (
+          !landedRef.current &&
+          tRel.current > 0.9 &&
+          Math.hypot(tx - curP.x, ty - curP.y) < 0.06
+        ) {
+          landedRef.current = true;
+          drive.onLand();
+        }
       }
       const spin = Math.sin(Math.PI * Math.min(1, tRel.current / 1.2)) * 0.9;
       eul.set(
@@ -664,23 +671,32 @@ function Band({
     });
 
     const pts = isSmall ? 16 : 32;
-    const l1p = lerps.current[0] ?? null;
-    const l2p = lerps.current[1] ?? null;
-    const r1p = lerps.current[2] ?? null;
-    const r2p = lerps.current[3] ?? null;
     if (!isReleased) {
-      updateStrand(bandL.current, curveL, midBody, l2p, l1p, fL, pts);
-      updateStrand(bandR.current, curveR, midBody, r2p, r1p, fR, pts);
+      updateStrand(
+        bandL.current,
+        curveL,
+        midBody,
+        lerps.current[1] ?? null,
+        lerps.current[0] ?? null,
+        fL,
+        pts,
+      );
+      updateStrand(
+        bandR.current,
+        curveR,
+        midBody,
+        lerps.current[3] ?? null,
+        lerps.current[2] ?? null,
+        fR,
+        pts,
+      );
     } else {
-      // Tali putus: potongan atas menggantung di pangkal, potongan bawah jatuh.
-      const tailL = l2p ?? l2.current?.translation();
-      const tailR = r2p ?? r2.current?.translation();
-      const topL = l1p ?? l1.current?.translation();
-      const topR = r1p ?? r1.current?.translation();
-      if (tailL) lineBetween(bandL.current, curveL, tailL, midBody.translation(), pts);
-      if (tailR) lineBetween(bandR.current, curveR, tailR, midBody.translation(), pts);
-      if (topL) lineBetween(stubL.current, stubCurveL, fL.translation(), topL, pts);
-      if (topR) lineBetween(stubR.current, stubCurveR, fR.translation(), topR, pts);
+      // Tali putus: sisa tali tetap menempel di cincin kartu dan menjuntai pendek.
+      const m = midBody.translation();
+      const tl = l2.current?.translation();
+      const tr = r2.current?.translation();
+      if (tl) lineBetween(bandL.current, curveL, m, tl, pts);
+      if (tr) lineBetween(bandR.current, curveR, m, tr, pts);
     }
 
     // Tali menipis seiring scroll (seperti ditarik), lalu putus.
@@ -691,7 +707,7 @@ function Band({
     const width = isReleased
       ? STRAP_WIDTH * 0.4
       : STRAP_WIDTH * (1 - 0.65 * fray * fray);
-    for (const m of [bandL.current, bandR.current, stubL.current, stubR.current]) {
+    for (const m of [bandL.current, bandR.current]) {
       const mat = m?.material as unknown as { lineWidth: number } | undefined;
       if (mat) mat.lineWidth = width;
     }
@@ -850,12 +866,10 @@ function Band({
       <Rope a={fixedR} b={r1} len={geo.seg} />
       {!released && <Rope a={r1} b={r2} len={geo.seg} />}
       <Rope a={r2} b={mid} len={geo.seg} />
-      {!released && <Pin a={mid} b={card} />}
+      <Pin a={mid} b={card} />
 
       <Strap meshRef={bandL} texture={textures.strap} size={[w, h]} />
       <Strap meshRef={bandR} texture={textures.strap} size={[w, h]} />
-      <Strap meshRef={stubL} texture={textures.strap} size={[w, h]} visible={released} />
-      <Strap meshRef={stubR} texture={textures.strap} size={[w, h]} visible={released} />
     </>
   );
 }
@@ -867,6 +881,24 @@ function CameraRig({ z }: { z: number }) {
     camera.position.set(0, 0, z);
     camera.updateProjectionMatrix();
   }, [camera, z]);
+  return null;
+}
+
+// Navbar = elemen fixed/sticky pendek di puncak layar. Tali dipotong di bawahnya.
+function findNav(): Element | null {
+  const vw = window.innerWidth;
+  const els = document.querySelectorAll(
+    'header, nav, [class*="fixed"], [class*="sticky"]',
+  );
+  for (const el of Array.from(els)) {
+    if (el.closest("[aria-hidden='true']")) continue;
+    const cs = getComputedStyle(el);
+    if (cs.position !== "fixed" && cs.position !== "sticky") continue;
+    const r = el.getBoundingClientRect();
+    if (r.top <= 1 && r.height > 20 && r.height < 160 && r.width > vw * 0.6) {
+      return el;
+    }
+  }
   return null;
 }
 
@@ -897,6 +929,7 @@ export default function Lanyard({
   const progress = useRef(0);
   const releasedRef = useRef(false);
   const targetRef = useRef<HTMLElement | null>(null);
+  const landRef = useRef<() => void>(() => {});
 
   // Layar lebar: canvas jadi lapisan fixed (via portal) dengan koreografi scroll.
   // Layar kecil: seperti sebelumnya, canvas di dalam hero.
@@ -944,32 +977,95 @@ export default function Lanyard({
   }, [eventSource, choreo]);
 
   // Progres scroll: tali menipis, putus, lalu kartu pindah ke About.
+  // Saat tali putus (scroll ke bawah), halaman digeser sampai About tepat di
+  // atas dan scroll ditahan sampai kartu mendarat.
   useEffect(() => {
     if (!choreo) return;
     const about = document.getElementById("about");
     const after = about?.nextElementSibling ?? null;
     targetRef.current = document.getElementById(TARGET_ID);
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
     const clamp = (n: number) => Math.min(1, Math.max(0, n));
+    let lastY = window.scrollY;
+    let navEl: Element | null = null;
+    let holding = false;
+    let holdTimer: number | undefined;
+
+    const block = (e: Event) => e.preventDefault();
+    const blockKeys = (e: KeyboardEvent) => {
+      if (
+        ["ArrowDown", "ArrowUp", "PageDown", "PageUp", "Home", "End", " "].includes(
+          e.key,
+        )
+      ) {
+        e.preventDefault();
+      }
+    };
+    const endHold = () => {
+      if (!holding) return;
+      holding = false;
+      window.clearTimeout(holdTimer);
+      window.removeEventListener("wheel", block);
+      window.removeEventListener("touchmove", block);
+      window.removeEventListener("keydown", blockKeys);
+    };
+    const startHold = () => {
+      if (holding || reduceMotion || !about) return;
+      holding = true;
+      window.addEventListener("wheel", block, { passive: false });
+      window.addEventListener("touchmove", block, { passive: false });
+      window.addEventListener("keydown", blockKeys);
+      holdTimer = window.setTimeout(endHold, 2400); // pengaman kalau kartu tidak mendarat
+      window.scrollTo({
+        top: window.scrollY + about.getBoundingClientRect().top,
+        behavior: "smooth",
+      });
+    };
+    landRef.current = endHold;
+
+    const navBottom = () => {
+      if (!navEl || !navEl.isConnected) navEl = findNav();
+      return navEl ? Math.max(0, navEl.getBoundingClientRect().bottom) : 0;
+    };
+
     const update = () => {
       const vh = window.innerHeight;
+      const y = window.scrollY;
+      const down = y > lastY;
+      lastY = y;
       const p = about ? clamp(1 - about.getBoundingClientRect().top / vh) : 0;
       progress.current = p;
       const q = after ? clamp(1 - after.getBoundingClientRect().top / vh) : 0;
       const fade = 1 - clamp((q - 0.1) / 0.4);
-      if (wrapRef.current) wrapRef.current.style.opacity = String(fade);
+      const wrap = wrapRef.current;
+      if (wrap) {
+        wrap.style.opacity = String(fade);
+        wrap.style.clipPath = `inset(${Math.round(navBottom())}px 0 0 0)`;
+      }
       setCovered(fade <= 0.01);
       const rel = releasedRef.current;
-      const next = Boolean(targetRef.current) && (rel ? p > REATTACH_BELOW : p >= RELEASE_AT);
+      const next =
+        Boolean(targetRef.current) &&
+        (rel ? p > REATTACH_BELOW : p >= RELEASE_AT);
       if (next !== rel) {
         releasedRef.current = next;
         setReleased(next);
-        if (!next) setEpoch((e) => e + 1); // tali tersambung lagi: pasang ulang dari atas
+        if (next) {
+          if (down) startHold();
+        } else {
+          endHold();
+          setEpoch((e) => e + 1); // tali tersambung lagi: pasang ulang dari atas
+        }
       }
     };
     update();
     window.addEventListener("scroll", update, { passive: true });
     window.addEventListener("resize", update);
     return () => {
+      endHold();
+      landRef.current = () => {};
       window.removeEventListener("scroll", update);
       window.removeEventListener("resize", update);
     };
@@ -982,6 +1078,7 @@ export default function Lanyard({
     released,
     progress,
     getTarget: () => targetRef.current,
+    onLand: () => landRef.current(),
   };
 
   const content = (
