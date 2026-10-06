@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { GithubActivity } from "@/components/site/github-activity";
 import { RevealText } from "@/components/site/motion";
 import { RetroComputerSlot } from "@/components/site/retro-computer-slot";
 import { getOwnerProfile } from "@/modules/content/repository";
@@ -62,6 +63,10 @@ export async function SiteFooter() {
             </div>
           </div>
         </div>
+
+        {owner?.githubUsername && (
+          <GithubActivity username={owner.githubUsername} />
+        )}
 
         <div className="mt-12 flex flex-col justify-between gap-6 border-t border-line pt-6 md:flex-row md:items-center">
           <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm font-medium">
