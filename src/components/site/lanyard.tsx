@@ -691,12 +691,14 @@ function Band({
         pts,
       );
     } else {
-      // Tali putus: sisa tali tetap menempel di cincin kartu dan menjuntai pendek.
+      // Tali putus: sisa tali pendek menjuntai ke ATAS dari cincin kartu,
+      // tidak pernah turun menutupi wajah kartu.
       const m = midBody.translation();
-      const tl = l2.current?.translation();
-      const tr = r2.current?.translation();
-      if (tl) lineBetween(bandL.current, curveL, m, tl, pts);
-      if (tr) lineBetween(bandR.current, curveR, m, tr, pts);
+      const stub = 0.16;
+      const tipL = new THREE.Vector3(m.x - 0.05, m.y + stub, m.z);
+      const tipR = new THREE.Vector3(m.x + 0.05, m.y + stub, m.z);
+      lineBetween(bandL.current, curveL, m, tipL, pts);
+      lineBetween(bandR.current, curveR, m, tipR, pts);
     }
 
     // Tali menipis seiring scroll (seperti ditarik), lalu putus.
