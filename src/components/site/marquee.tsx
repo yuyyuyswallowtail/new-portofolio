@@ -74,7 +74,7 @@ export function Marquee({
 
   // Padding vertikal menyediakan ruang untuk ujung pita yang miring.
   return (
-    <div aria-hidden="true" className="relative z-10 py-9 [overflow-x:clip] md:py-12">
+    <div aria-hidden="true" className="relative z-10 pb-16 pt-9 [overflow-x:clip] md:pb-[4.5rem] md:pt-12">
       {band}
     </div>
   );

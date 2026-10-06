@@ -490,3 +490,8 @@ a.chip:hover {
   -webkit-text-stroke: 0.04em var(--bg);
   paint-order: stroke fill;
 }
+
+/* Pita marquee di hero tidak boleh keluar dari kartu hero (hanya sumbu x). */
+#top {
+  overflow-x: clip;
+}
