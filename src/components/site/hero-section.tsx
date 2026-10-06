@@ -56,6 +56,23 @@ export function HeroSection({
     <>
       <CrtBackdrop />
 
+      {/* Pita di belakang judul: dipotong mengikuti kartu hero, menyilang dengan marquee bawah. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 -z-10 overflow-hidden rounded-[28px] md:rounded-[40px]"
+      >
+        <div className="absolute left-[40%] top-[36%] w-[200%] -translate-x-1/2 -translate-y-1/2">
+          <Marquee
+            items={HERO_BAND}
+            bare
+            reverse
+            slow
+            size="md"
+            className="rotate-[10deg] md:rotate-[24deg]"
+          />
+        </div>
+      </div>
+
       <div className="relative z-10 mx-auto grid w-full max-w-6xl flex-1 items-center gap-6 px-6 pb-10 pt-28 md:grid-cols-[1.35fr_1fr]">
         {/* Teks: di bawah lanyard pada mobile, di kiri pada desktop */}
         <div className="order-2 md:order-1">
@@ -63,14 +80,6 @@ export function HeroSection({
             / Software Engineer &amp; Full Stack Web Developer
           </motion.p>
           <div className="relative mt-6">
-            <Marquee
-              items={HERO_BAND}
-              behind
-              tilt={6}
-              reverse
-              slow
-              size="md"
-            />
             <h1 className="display-xl crt-text title-on-band break-words">
               {introDone || reduce ? (
                 <RevealText text={name} delay={0.1} />

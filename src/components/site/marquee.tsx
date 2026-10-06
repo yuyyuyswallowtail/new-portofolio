@@ -2,24 +2,27 @@ import { cn } from "@/lib/utils";
 
 type MarqueeProps = {
   items: string[];
-  /** Derajat. Negatif = sisi kanan naik (menukik ke atas dari kiri ke kanan). */
+  /** Derajat (inline). Kosongkan kalau sudut diatur lewat className. Negatif = kanan naik. */
   tilt?: number;
   reverse?: boolean;
   slow?: boolean;
-  /** Letakkan absolut di belakang elemen induk (induk harus `relative`). */
-  behind?: boolean;
+  /** Hanya pita, tanpa pembungkus: posisi dan sudut diatur pemanggil. */
+  bare?: boolean;
   size?: "md" | "lg";
+  className?: string;
 };
 
 export function Marquee({
   items,
-  tilt = -3,
+  tilt,
   reverse = false,
   slow = false,
-  behind = false,
+  bare = false,
   size = "lg",
+  className,
 }: MarqueeProps) {
   if (items.length === 0) return null;
+  const angle = tilt ?? (bare ? undefined : -3);
   const repeats = Math.max(1, Math.ceil(12 / items.length));
   const row = Array.from({ length: repeats }, () => items)
     .flat()
@@ -30,9 +33,10 @@ export function Marquee({
       className={cn(
         "marquee overflow-hidden border-y-2 border-on-block bg-block-yellow text-on-block shadow-[0_20px_40px_-18px_rgb(0_0_0_/_0.55),0_8px_40px_-18px_var(--block-yellow)]",
         size === "lg" ? "py-4 md:py-5" : "py-2.5 md:py-3",
-        behind ? "w-full" : "-mx-[12%] w-[124%]",
+        bare ? "w-full" : "-mx-[12%] w-[124%]",
+        className,
       )}
-      style={{ transform: `rotate(${tilt}deg)` }}
+      style={angle === undefined ? undefined : { transform: `rotate(${angle}deg)` }}
     >
       <div
         className={cn(
@@ -61,20 +65,14 @@ export function Marquee({
     </div>
   );
 
-  if (behind) {
-    return (
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute left-1/2 top-1/2 -z-10 w-[140vw] -translate-x-1/2 -translate-y-1/2"
-      >
-        {band}
-      </div>
-    );
-  }
+  if (bare) return band;
 
   // Padding vertikal menyediakan ruang untuk ujung pita yang miring.
   return (
-    <div aria-hidden="true" className="relative z-10 pb-16 pt-9 [overflow-x:clip] md:pb-[4.5rem] md:pt-12">
+    <div
+      aria-hidden="true"
+      className="relative z-10 pb-16 pt-9 [overflow-x:clip] md:pb-[4.5rem] md:pt-12"
+    >
       {band}
     </div>
   );
