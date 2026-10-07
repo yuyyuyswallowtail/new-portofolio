@@ -5,10 +5,14 @@ import type { listProjects } from "@/modules/content/repository";
 
 export type Project = Awaited<ReturnType<typeof listProjects>>[number];
 
+const miniLink = "relative z-10 hover:underline";
+
 export function ProjectCard({ p, i }: { p: Project; i: number }) {
-  const href = p.liveUrl || p.repoUrl || undefined;
-  const body = (
-    <>
+  // Klik di gambar/judul: live kalau ada, kalau tidak repo.
+  const mainHref = p.liveUrl || p.repoUrl || undefined;
+
+  return (
+    <div className="group relative">
       <ClipReveal>
         <div
           className={cn(
@@ -38,25 +42,48 @@ export function ProjectCard({ p, i }: { p: Project; i: number }) {
       </ClipReveal>
       <div className="mt-4 flex items-start justify-between gap-4">
         <h3 className="text-2xl font-semibold tracking-tight group-hover:underline">
-          {p.title}
+          {mainHref ? (
+            <a
+              href={mainHref}
+              target="_blank"
+              rel="noreferrer"
+              className="after:absolute after:inset-0 after:z-[1]"
+            >
+              {p.title}
+            </a>
+          ) : (
+            p.title
+          )}
         </h3>
         <span className="chip shrink-0 text-ink-muted">{p.source}</span>
       </div>
       {p.description && (
         <p className="mt-2 line-clamp-2 text-ink-muted">{p.description}</p>
       )}
-      <p className="font-data mt-3 text-xs text-accent-strong">
-        {p.repoUrl && "repo ↗  "}
-        {p.liveUrl && "live ↗"}
-      </p>
-    </>
-  );
-
-  return href ? (
-    <a href={href} target="_blank" rel="noreferrer" className="group block">
-      {body}
-    </a>
-  ) : (
-    <div className="group block">{body}</div>
+      {(p.repoUrl || p.liveUrl) && (
+        <p className="font-data mt-3 flex gap-3 text-xs text-accent-strong">
+          {p.repoUrl && (
+            <a
+              href={p.repoUrl}
+              target="_blank"
+              rel="noreferrer"
+              className={miniLink}
+            >
+              repo ↗
+            </a>
+          )}
+          {p.liveUrl && (
+            <a
+              href={p.liveUrl}
+              target="_blank"
+              rel="noreferrer"
+              className={miniLink}
+            >
+              live ↗
+            </a>
+          )}
+        </p>
+      )}
+    </div>
   );
 }
